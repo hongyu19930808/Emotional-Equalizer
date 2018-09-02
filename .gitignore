@@ -97,3 +97,6 @@ ENV/
 
 # mypy
 .mypy_cache/
+.DS_Store
+midi/要下载的测试曲目.jpg
+source 2018-09-02.zip
