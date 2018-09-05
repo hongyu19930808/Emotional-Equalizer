@@ -111,6 +111,12 @@ class Analyzer:
                             count_major += note.duration
                         if (note.pitch - result[start]) % 12 in [9, 4]:
                             count_minor += note.duration
+                    # the end of song
+                    if end >= len(result):
+                        if (notes_within_key[-1].pitch - result[start]) % 12 == 0:
+                            count_major *= 2
+                        if (notes_within_key[-1].pitch - result[start]) % 12 == 9:
+                            count_minor *= 2
                     if count_major > count_minor:
                         mode = 'Major'
                         offset = 0

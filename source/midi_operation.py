@@ -197,6 +197,18 @@ class MIDI:
         key_signature_map = [0, -5, 2, -3, 4, -1, -6, 1, -4, 3, -2, 5]
         for excerpt_index in keys:
             excerpt = patterns[excerpt_index]
+            # if there is no note event, then ignore that bar
+            has_note_event = False
+            for track in excerpt:
+                for event in track:
+                    if type(event) is NoteOnEvent or type(event) is NoteOffEvent:
+                        has_note_event = True
+                        break
+                if has_note_event == True:
+                    break
+            if has_note_event == False:
+                continue
+            
             for track_index in range(len(excerpt)):
                 if len(pattern) <= track_index:
                     new_track = Track(tick_relative = False)
