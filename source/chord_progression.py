@@ -209,7 +209,7 @@ class Analyzer:
             # 0: rest
             # 1, 2, 3, ...: tonic, supertonic, mediant, ...
             # 1.5, 2.5, ...: chromatic note            
-            index = int(note.start / unit)
+            index = min(int(note.start / unit), len(tonalities) - 1)
             tonality = tonalities[index]
             profile = []
             if tonality['mode'] == 'Major':

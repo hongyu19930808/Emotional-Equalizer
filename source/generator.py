@@ -56,7 +56,7 @@ class Song:
                 note.pitch = note.pitch + pitch_shift
     
     def compose(self, mood, index):
-        if index < self.num_chord:
+        if index < min(self.num_chord, len(self.tonalities)):
             self.tonality = self.tonalities[index]
         else:
             self.tonality = self.tonalities[-1]
