@@ -11,12 +11,12 @@ class Analyzer:
         important_notes = []
         current_beat = 0
         for note in sorted_notes:
+            if note.is_rest() == True:
+                continue            
             if note.start >= current_beat:
                 important_notes.append(note)
                 while note.start >= current_beat:
                     current_beat += unit
-        while important_notes[-1].is_rest() == True:
-            important_notes.pop()
         return important_notes
     
     @staticmethod
