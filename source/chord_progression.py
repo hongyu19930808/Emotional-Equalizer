@@ -21,7 +21,7 @@ class Analyzer:
     
     @staticmethod
     def get_trans_matrix():
-        prob = [5, 1, 1, 2, 1, 3, 1, 3, 1, 2, 1, 1]
+        prob = [6, 1, 1, 2, 1, 3, 1, 3, 1, 2, 1, 1]
         # probability for key modulation
         matrix = []
         for i in range(12):
@@ -111,7 +111,7 @@ class Analyzer:
                             count_major += note.duration
                         if (note.pitch - result[start]) % 12 in [9, 4]:
                             count_minor += note.duration
-                    # the end of song
+                    # if it is the end of song, we can consider the last note
                     if end >= len(result):
                         if (notes_within_key[-1].pitch - result[start]) % 12 == 0:
                             count_major *= 2
@@ -138,9 +138,14 @@ class Analyzer:
             return float(max(emit_p[st]))
         score = 0
         all_duration = 0
+        normalized_pitches = [(pitch - st + 12) % 12 for (pitch, duration) in obs]
         for (pitch, duration) in obs:
             score += emit_p[st][pitch] * duration
             all_duration += duration
+        if (0 in normalized_pitches) and (4 in normalized_pitches) and (7 in normalized_pitches):
+            score *= 1.2
+        elif (9 in normalized_pitches) and (0 in normalized_pitches) and (4 in normalized_pitches):
+            score *= 1.2
         return float(score) / float(duration)
     
     # modified from the website: https://en.wikipedia.org/wiki/Viterbi_algorithm
