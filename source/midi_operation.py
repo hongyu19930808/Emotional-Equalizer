@@ -225,7 +225,9 @@ class MIDI:
                     time_signature.tick = 0
                     new_track.append(time_signature)
                     
-                if last_index == -1 or tonalities[excerpt_index]['mode'] != tonalities[last_index]['mode']:
+                if last_index == -1 or \
+                   tonalities[excerpt_index]['mode'] != tonalities[last_index]['mode'] or \
+                   tonalities[excerpt_index]['key'] != tonalities[last_index]['key']:                
                     key_signature = KeySignatureEvent()
                     if tonalities[excerpt_index]['mode'] == 'Major':
                         value = key_signature_map[tonalities[excerpt_index]['key']]
