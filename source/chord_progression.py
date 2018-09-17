@@ -21,7 +21,7 @@ class Analyzer:
     
     @staticmethod
     def get_trans_matrix():
-        prob = [6, 1, 1, 2, 1, 3, 1, 3, 1, 2, 1, 1]
+        prob = [8, 1, 1, 2, 1, 3, 1, 3, 1, 2, 1, 1]
         # probability for key modulation
         matrix = []
         for i in range(12):
@@ -109,8 +109,8 @@ class Analyzer:
                     for note in notes_within_key:
                         if (note.pitch - result[start]) % 12 in [0, 7]:
                             count_major += note.duration
-                        if (note.pitch - result[start]) % 12 in [9, 4]:
-                            count_minor += note.duration
+                        if (note.pitch - result[start]) % 12 == 9:
+                            count_minor += note.duration * 2
                     # if it is the end of song, we can consider the last note
                     if end >= len(result):
                         if (notes_within_key[-1].pitch - result[start]) % 12 == 0:
@@ -138,15 +138,25 @@ class Analyzer:
             return float(max(emit_p[st]))
         score = 0
         all_duration = 0
-        normalized_pitches = [(pitch - st + 12) % 12 for (pitch, duration) in obs]
+        
         for (pitch, duration) in obs:
             score += emit_p[st][pitch] * duration
             all_duration += duration
+        
+        normalized_pitches = [(pitch - st + 12) % 12 for (pitch, duration) in obs]
         if (0 in normalized_pitches) and (4 in normalized_pitches) and (7 in normalized_pitches):
             score *= 1.2
         elif (9 in normalized_pitches) and (0 in normalized_pitches) and (4 in normalized_pitches):
             score *= 1.2
-        return float(score) / float(duration)
+        
+        tonic_duration = 0
+        for (pitch, duration) in obs:
+            if (pitch - st + 12) % 12 == 0 or (pitch - st + 12) % 12 == 9:
+                tonic_duration += duration
+        if tonic_duration >= 0.75 * all_duration:
+            score *= 1.1
+        
+        return float(score) / float(all_duration)
     
     # modified from the website: https://en.wikipedia.org/wiki/Viterbi_algorithm
     @staticmethod
