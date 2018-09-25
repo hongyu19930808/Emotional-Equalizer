@@ -38,7 +38,7 @@ class Controller:
             # remove the event which should not located in bar[index]
             event_list = []
             for event in track:
-                if event.tick > unit * resolution:
+                if event.tick >= unit * resolution:
                     event_list.append(event)
                     self.removed_event[index].append((event, track_index))
             for event in event_list:
@@ -47,8 +47,8 @@ class Controller:
             for key in self.removed_event.keys():
                 for (event, event_track_index) in self.removed_event[key]:
                     if event_track_index == track_index and \
-                       event.tick > (index - key) * unit * resolution and \
-                       event.tick <= (index + 1 - key) * unit * resolution:
+                       event.tick >= (index - key) * unit * resolution and \
+                       event.tick < (index + 1 - key) * unit * resolution:
                         new_event = MIDI.copy_event(event)
                         new_event.tick = event.tick - (index - key) * unit * resolution
                         track.append(new_event)
