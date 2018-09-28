@@ -119,7 +119,7 @@ class ScheduleUI:
         
         index = 0
         self.mood_color = ['yellow', 'magenta', 'orange', 'red', 'cyan', 'grey', 'pink', 'green']
-        self.mood_index = tk.IntVar(master = frame, value = -1)
+        self.mood_index = tk.IntVar(master = frame, value = 0)
         for mood in Mood.mood_strs:
             button = tk.Radiobutton(master = frame, text = mood, background = self.mood_color[index],
                                     variable = self.mood_index, value = index)
