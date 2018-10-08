@@ -125,7 +125,7 @@ class MIDI:
         found = False
         while True:
             for event in pattern[index]:
-                if type(event) is NoteOnEvent:
+                if type(event) is NoteOnEvent and event.channel != 9:
                     found = True
                     break
             if found == True:
@@ -143,6 +143,8 @@ class MIDI:
         key_status = {}
         current_tick = 0
         for event in track:
+            if (type(event) is NoteOnEvent or type(event) is NoteOffEvent) and event.channel == 9:
+                continue
             if type(event) is NoteOnEvent and event.data[0] != 0 and event.data[1] != 0:
                 current_tick += event.tick
                 pitch = event.data[0]
