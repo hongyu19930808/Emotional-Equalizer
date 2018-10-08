@@ -334,11 +334,12 @@ class MainUI:
         info_ui = InfoUI(self.root)
         unit = info_ui.get_unit()
         offset = info_ui.get_offset()
-        self.play_pause_button['text'] = 'Play'
-        self.play_pause_button['state'] = tk.NORMAL
-        self.stop_button['state'] = tk.NORMAL
-        self.change_button['state'] = tk.NORMAL
-        self.controller.open(path, unit, offset)
+        result = self.controller.open(path, unit, offset)
+        if result == True:
+            self.play_pause_button['text'] = 'Play'
+            self.play_pause_button['state'] = tk.NORMAL
+            self.stop_button['state'] = tk.NORMAL
+            self.change_button['state'] = tk.NORMAL
         self.root.update()
         self.root.deiconify()
     
@@ -471,13 +472,13 @@ class MainUI:
                                 command = self.open_clicked)
         self.open_button.grid(row = 10, column = 0)
         self.play_pause_button = tk.Button(master = frame, text = 'Play', width = button_width,
-                                      command = self.play_pause_clicked, state = tk.DISABLED)
+                                      command = self.play_pause_clicked, state = tk.NORMAL)
         self.play_pause_button.grid(row = 10, column = 1)
         self.stop_button = tk.Button(master = frame, text = 'Stop', width = button_width,
-                                command = self.stop_clicked, state = tk.DISABLED)
+                                command = self.stop_clicked, state = tk.NORMAL)
         self.stop_button.grid(row = 10, column = 3)
         self.change_button = tk.Button(master = frame, text = 'Change', width = button_width,
-                                  state = tk.DISABLED)
+                                  state = tk.NORMAL)
         self.change_button.bind('<Button-1>', self.change_clicked)
         self.change_button.bind('<Control-Button-1>', self.control_change_clicked)
         self.change_button.grid(row = 10, column = 4)

@@ -6,11 +6,13 @@ from mood import Mood
 from threading import Lock
 from thread import start_new_thread
 from time import sleep, time
+from impromptu import Impromptu
 
 class Controller:
     def __init__(self, gui):
         self.gui = gui
         self.song = None
+        self.inpromptu = None
         
         # used by several threads
         self.composition_mutex = Lock()
@@ -146,6 +148,79 @@ class Controller:
                 player.play(samples)
         
         self.play_thread_mutex.release()
+        
+    def impromptu_compose(self):
+        self.compose_thread_mutex.acquire()
+        self.synth.reset()
+        ## To be modified
+        unit = 4 
+        self.patterns = {}
+        self.tonalities = {}
+        self.instruments = {}
+        self.inpromptu = Impromptu(unit)
+        while True:
+            if self.get_status() == 'stop':
+                break
+            self.composition_mutex.acquire()
+            local_need_compose = self.need_compose
+            next_index = self.current_playing_index + 1
+            local_mood = self.current_mood
+            self.composition_mutex.release()
+            
+            if local_need_compose == True:
+                (pattern, tonality, instruments) = self.inpromptu.compose(local_mood, next_index)
+                self.patterns[next_index] = pattern
+                self.tonalities[next_index] = tonality
+                self.instruments[next_index] = instruments
+                samples = self.synth.convert_pattern_to_samples(pattern, instruments, unit)          
+                
+                self.composition_mutex.acquire()
+                self.next_samples = samples
+                self.need_compose = False
+                self.composition_mutex.release()
+            else:
+                sleep(0.01)
+        
+        MIDI.write_patterns('demo.mid', self.patterns, unit, self.tonalities, self.instruments)
+        self.compose_thread_mutex.release()
+    
+    def impromptu_play(self):
+        self.play_thread_mutex.acquire()
+        player = Player(self)
+        
+        while True:
+            if self.get_status() == 'stop':
+                break
+            elif self.get_status() == 'pause':
+                sleep(0.01)
+                continue    
+            else:
+                self.composition_mutex.acquire()
+                local_playing_index = None
+                need_wait = False
+                # finish playing
+                if self.next_samples == None:
+                    local_playing_index = self.current_playing_index
+                    self.composition_mutex.release()
+                    break
+                # the samples are not ready
+                elif self.next_samples == 'not ready':
+                    need_wait = True
+                    self.need_compose = True
+                # ready to play
+                else:
+                    samples = self.next_samples
+                    self.current_playing_index += 1
+                    local_playing_index = self.current_playing_index
+                    self.next_samples = 'not ready'
+                    self.need_compose = True
+                self.composition_mutex.release()
+            if need_wait == True:
+                sleep(0.01)
+            else:
+                player.play(samples)
+        
+        self.play_thread_mutex.release()
             
     def mood_change(self, mood, increase_seed = 0):
         self.composition_mutex.acquire()
@@ -163,26 +238,37 @@ class Controller:
     def tempo_change(self, value):
         if self.song != None:
             self.song.tempo_multiplier = value
+        if self.inpromptu != None:
+            self.inpromptu.tempo_multiplier = value
         self.tempo_multiplier = value
     
     def open(self, path, unit, offset):
         self.stop()
         (melody, resolution) = MIDI.read_melody(path)
+        if len(melody) == 0:
+            return False
         self.song = Song(track_melody = melody, unit = unit, offset = offset, resolution = resolution)
         self.song.tempo_multiplier = self.tempo_multiplier
         self.gui.init_progress_scale(self.song.num_chord)
         self.gui.song_length = self.song.num_chord
+        return True
         
     def play(self):
         self.set_status('play')
         compose_thread_locked = self.compose_thread_mutex.locked()
-        play_thread_locked = self.play_thread_mutex.locked()   
-        if compose_thread_locked == False:
-            start_new_thread(self.compose, ())
-        if play_thread_locked == False:
-            start_new_thread(self.play_samples, ())        
+        play_thread_locked = self.play_thread_mutex.locked()          
+        if self.song != None: 
+            if compose_thread_locked == False:
+                start_new_thread(self.compose, ())
+            if play_thread_locked == False:
+                start_new_thread(self.play_samples, ())
+        else:
+            if compose_thread_locked == False:
+                start_new_thread(self.impromptu_compose, ())
+            if play_thread_locked == False:
+                start_new_thread(self.impromptu_play, ())
     
-    def stop(self):
+    def stop(self):        
         self.composition_mutex.acquire()
         self.current_playing_index = -1
         self.need_compose = True
@@ -190,7 +276,8 @@ class Controller:
         self.set_status('stop')
         self.removed_event = {}
         self.composition_mutex.release()
-        self.gui.update_progress_scale(0)      
+        if self.song != None:
+            self.gui.update_progress_scale(0)
     
     def pause(self):
         self.set_status('pause')

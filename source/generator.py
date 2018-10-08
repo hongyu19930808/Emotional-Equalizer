@@ -17,9 +17,12 @@ class Song:
         self.adjust_melody_notes(melody_notes, offset)
         self.harmony_length = unit
         important_notes = Analyzer.find_important_notes(melody_notes, unit)
-        if offset != 0:
+        if len(important_notes) > 0 and offset != 0:
             important_notes.pop(0)
-        self.num_chord = int(important_notes[-1].start / unit) + 1
+        if len(important_notes) > 0:
+            self.num_chord = int(important_notes[-1].start / unit) + 1
+        else:
+            self.num_chord = 1
         (self.tonalities, change_points) = Analyzer.find_tonality(melody_notes, important_notes, unit)
         self.annotated_melody = Analyzer.annotate_all_notes(melody_notes, self.tonalities, unit)
         self.annotated_important_notes = Analyzer.annotate_all_notes(important_notes, self.tonalities, unit)
