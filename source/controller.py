@@ -149,15 +149,13 @@ class Controller:
         
         self.play_thread_mutex.release()
         
-    def impromptu_compose(self):
+    def impromptu_compose(self, unit, offset):
         self.compose_thread_mutex.acquire()
         self.synth.reset()
-        ## To be modified
-        unit = 4 
         self.patterns = {}
         self.tonalities = {}
         self.instruments = {}
-        self.inpromptu = Impromptu(unit)
+        self.inpromptu = Impromptu(unit, offset)
         while True:
             if self.get_status() == 'stop':
                 break
@@ -168,7 +166,7 @@ class Controller:
             self.composition_mutex.release()
             
             if local_need_compose == True:
-                (pattern, tonality, instruments) = self.inpromptu.compose(local_mood, next_index)
+                (pattern, tonality, instruments) = self.inpromptu.compose(local_mood)
                 self.patterns[next_index] = pattern
                 self.tonalities[next_index] = tonality
                 self.instruments[next_index] = instruments
@@ -257,14 +255,15 @@ class Controller:
         self.set_status('play')
         compose_thread_locked = self.compose_thread_mutex.locked()
         play_thread_locked = self.play_thread_mutex.locked()          
-        if self.song != None: 
-            if compose_thread_locked == False:
+        if self.song != None:
+            if compose_thread_locked == False:               
                 start_new_thread(self.compose, ())
             if play_thread_locked == False:
                 start_new_thread(self.play_samples, ())
         else:
             if compose_thread_locked == False:
-                start_new_thread(self.impromptu_compose, ())
+                (unit, offset) = self.gui.get_unit_offset()
+                start_new_thread(self.impromptu_compose, (unit, offset))
             if play_thread_locked == False:
                 start_new_thread(self.impromptu_play, ())
     

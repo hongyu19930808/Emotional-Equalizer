@@ -343,6 +343,15 @@ class MainUI:
         self.root.update()
         self.root.deiconify()
     
+    def get_unit_offset(self):
+        self.root.withdraw()
+        info_ui = InfoUI(self.root)
+        unit = info_ui.get_unit()
+        offset = info_ui.get_offset()
+        self.root.update()
+        self.root.deiconify()        
+        return (unit, offset)
+    
     def set_state(self, widget, state):
         if state == False:
             widget['state'] = tk.DISABLED

@@ -2,25 +2,24 @@ from midi_operation import MIDI, Note
 from chord_progression import Composer
 from instrument import Instrument
 from generator import Generator
-from random import random
+from random import random, randint
 
 class Impromptu:
     
-    def __init__(self, unit, offset = 0):
+    def __init__(self, unit, offset):
         self.tempo_multiplier = 1.0
         self.harmony_length = unit
         self.offset = offset
         Instrument.init()
     
-    def compose(self, mood, index):
+    def compose(self, mood):
         self.tonality = {'key': 0, 'mode': 'Major'}
         melody_param = self.generate_melody_parameter(mood)
         melody_track = Generator.generate_track([], melody_param['tempo'] * self.tempo_multiplier)
         
         harmony_param = self.generate_harmony_parameter(mood)
-        # Generator.adjust_mode_for_harmony(adjustable, self.tonality, melody_param, harmony_param)
         # self.adjusted_progressions = Composer.adjust_progression(self.progression_notations, self.annotated_important_notes, harmony_param)
-        harmony_annotated_notes = self.generate_harmony(harmony_param, index)
+        harmony_annotated_notes = self.generate_harmony(harmony_param)
         harmony_track = Generator.generate_track(harmony_annotated_notes, harmony_param['tempo'] * self.tempo_multiplier)
         harmony_track_split = MIDI.separate_track(harmony_track, num_track = 2)
         pattern = MIDI.new_pattern()
@@ -68,16 +67,34 @@ class Impromptu:
         param_effect = Generator.gen_effect_parameter(mood, 'harmony')
         return dict(param_basic.items() + param_bass.items() + param_effect.items())
     
-    def generate_harmony(self, param, index):
-        notations = [1, 4, 5, 1]
-        notation = notations[index % 4]
-        self.annotated_important_notes = [
-            {'notation': 1, 
-             'note': Note(pitch = 60, start = 0, duration = 2, dynamic = 80, channel = 0)}] * 2
+    def generate_harmony(self, param):
+        melody_notation = randint(1, 7)
+        if melody_notation in [1, 3, 5]:
+            notation = 1
+        elif melody_notation in [4, 6]:
+            notation = 4
+        else:
+            notation = 5
+        
+        self.annotated_important_notes = []
+        self.annotated_important_notes.append({
+            'notation': 0,
+            'note': Note(start = 0)
+        })
+        self.annotated_important_notes.append({
+            'notation': 0,
+            'note': Note(start = self.harmony_length)
+        })
+        
         self.adjusted_progressions = [notation, 1]
         (annotated_notes, tonality) = Generator.add_bass(
             self.annotated_important_notes, self.tonality,
             self.adjusted_progressions, self.harmony_length, param)
         (annotated_notes, tonality) = Generator.add_effects(annotated_notes, tonality, param)
-        return annotated_notes
+        
+        annotated_notes_refined = []
+        for annotated_note in annotated_notes:
+            if annotated_note['note'].start < self.harmony_length:
+                annotated_notes_refined.append(annotated_note)
+        return annotated_notes_refined
     
