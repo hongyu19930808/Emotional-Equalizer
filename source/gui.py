@@ -423,10 +423,18 @@ class MainUI:
         else:
             self.root.quit()
     
+    def key_press_event(self, event):
+        print 'press: ' + event.char
+        
+    def key_release_event(self, event):
+        print 'release: ' + event.char
+    
     def gui(self):
         self.root = tk.Tk()
         self.root.title('')
         self.root.protocol('WM_DELETE_WINDOW', self.quit_program)
+        self.root.bind(sequence = '<KeyPress>', func = self.key_press_event)
+        self.root.bind(sequence = '<KeyRelease>', func = self.key_release_event)        
         
         # set pad
         frame = tk.Frame(master = self.root)

@@ -7,6 +7,7 @@ from threading import Lock
 from thread import start_new_thread
 from time import sleep, time
 from impromptu import Impromptu
+from random import randint
 
 class Controller:
     def __init__(self, gui):
@@ -166,6 +167,7 @@ class Controller:
             self.composition_mutex.release()
             
             if local_need_compose == True:
+                self.inpromptu.melody_notation = randint(1, 7)
                 (pattern, tonality, instruments) = self.inpromptu.compose(local_mood)
                 self.patterns[next_index] = pattern
                 self.tonalities[next_index] = tonality

@@ -10,6 +10,7 @@ class Impromptu:
         self.tempo_multiplier = 1.0
         self.harmony_length = unit
         self.offset = offset
+        self.melody_notation = 1
         Instrument.init()
     
     def compose(self, mood):
@@ -68,7 +69,7 @@ class Impromptu:
         return dict(param_basic.items() + param_bass.items() + param_effect.items())
     
     def generate_harmony(self, param):
-        melody_notation = randint(1, 7)
+        melody_notation = self.melody_notation
         if melody_notation in [1, 3, 5]:
             notation = 1
         elif melody_notation in [4, 6]:
