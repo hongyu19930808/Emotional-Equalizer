@@ -29,6 +29,51 @@ class Controller:
         self.play_thread_mutex = Lock()
         self.synth = Synthesizer()
         self.tempo_multiplier = 1.0
+        start_new_thread(self.key_detection, ())
+    
+    def key_detection(self):
+        key_state = {}
+        while True:
+            for key in self.gui.key_state.keys():
+                value = self.gui.key_state[key]
+                if value == 1 and (key_state.has_key(key) == False or key_state[key] == 0):
+                    # note on event
+                    key_state[key] = 1
+                    notation = self.key_to_notation(key)
+                    events = self.notation_to_events(notation, 'on')
+                    if self.inpromptu != None:
+                        self.composition_mutex.acquire()
+                        self.inpromptu.melody_notation = notation
+                        self.next_samples = 'not ready'
+                        self.need_compose = True
+                        self.composition_mutex.release()
+                if value == 0 and (key_state.has_key(key) == True and key_state[key] == 1):
+                    # note off event
+                    key_state[key] = 0
+                    notation = self.key_to_notation(key)
+                    events = self.notation_to_events(notation, 'off')
+            sleep(0.01)
+            
+    def key_to_notation(self, key):
+        if key == 'space':
+            return 1
+        elif key == 'u':
+            return 2
+        elif key == 'i':
+            return 3
+        elif key == 'o':
+            return 4
+        elif key == 'p':
+            return 5
+        elif key == 'bracketleft':
+            return 6
+        elif key == 'bracketright':
+            return 7
+        else:
+            return 0
+    
+    def notation_to_events(self, notation, note_type):
+        return None
         
     # in case some notes cross the bar    
     def revise_pattern(self, pattern, index):
@@ -131,8 +176,8 @@ class Controller:
                     break
                 # the samples are not ready
                 elif self.next_samples == 'not ready':
-                    need_wait = True
                     self.need_compose = True
+                    need_wait = True
                 # ready to play
                 else:
                     samples = self.next_samples
@@ -167,7 +212,6 @@ class Controller:
             self.composition_mutex.release()
             
             if local_need_compose == True:
-                self.inpromptu.melody_notation = randint(1, 7)
                 (pattern, tonality, instruments) = self.inpromptu.compose(local_mood)
                 self.patterns[next_index] = pattern
                 self.tonalities[next_index] = tonality
@@ -205,8 +249,8 @@ class Controller:
                     break
                 # the samples are not ready
                 elif self.next_samples == 'not ready':
-                    need_wait = True
                     self.need_compose = True
+                    need_wait = True
                 # ready to play
                 else:
                     samples = self.next_samples
@@ -219,6 +263,7 @@ class Controller:
                 sleep(0.01)
             else:
                 player.play(samples)
+                sleep(0.1)
         
         self.play_thread_mutex.release()
             
@@ -287,8 +332,8 @@ class Controller:
         self.set_status('pause')
         self.composition_mutex.acquire()
         self.current_playing_index = value - 1
-        self.need_compose = True
         self.next_samples = 'not ready'
+        self.need_compose = True
         self.composition_mutex.release()
         self.gui.play_pause_button['text'] = 'Pause'
         self.set_status('play')

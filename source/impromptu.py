@@ -2,7 +2,6 @@ from midi_operation import MIDI, Note
 from chord_progression import Composer
 from instrument import Instrument
 from generator import Generator
-from random import random, randint
 
 class Impromptu:
     

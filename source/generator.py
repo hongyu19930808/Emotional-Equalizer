@@ -183,7 +183,7 @@ class Generator:
                 1: {'+': [Mood.Angry], '-': [Mood.Comic, Mood.Happy, Mood.Romantic, Mood.Mysterious]},
                 2: {'+': [Mood.Calm], '-': [Mood.Scary, Mood.Mysterious]},
                 3: {'+': [Mood.Comic, Mood.Happy, Mood.Mysterious, Mood.Calm], '-': []},
-                4: {'+': [], '-': []},
+                4: {'+': [Mood.Mysterious], '-': []},
             }
             
         for i in range(5):

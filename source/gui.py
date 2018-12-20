@@ -247,6 +247,7 @@ class MainUI:
         self.play_pause_button = None
         self.mood_labels = []
         self.mood_scales = []
+        self.key_state = {}
         self.controller = Controller(self)
         self.schedule_ui = None
         self.canvas_data = None
@@ -423,18 +424,33 @@ class MainUI:
         else:
             self.root.quit()
     
+    @staticmethod
+    def get_keysym(keycode):
+        keysym_map_mac = {131074: 'Shift_L', 131076: 'Shift_R', 
+                          262145: 'Control', 524320: 'Option_L', 
+                          1048584: 'Command_L', 1048592: 'Command_R',
+                          524352: 'Option_R'}
+        if keysym_map_mac.has_key(keycode):
+            return keysym_map_mac[keycode]
+        else:
+            return str(keycode)
+    
     def key_press_event(self, event):
-        print 'press: ' + event.char
+        if event.keysym == '??':
+            event.keysym = MainUI.get_keysym(event.keycode)        
+        self.key_state[event.keysym] = 1
         
     def key_release_event(self, event):
-        print 'release: ' + event.char
+        if event.keysym == '??':
+            event.keysym = MainUI.get_keysym(event.keycode)        
+        self.key_state[event.keysym] = 0
     
     def gui(self):
         self.root = tk.Tk()
         self.root.title('')
         self.root.protocol('WM_DELETE_WINDOW', self.quit_program)
         self.root.bind(sequence = '<KeyPress>', func = self.key_press_event)
-        self.root.bind(sequence = '<KeyRelease>', func = self.key_release_event)        
+        self.root.bind(sequence = '<KeyRelease>', func = self.key_release_event)
         
         # set pad
         frame = tk.Frame(master = self.root)
