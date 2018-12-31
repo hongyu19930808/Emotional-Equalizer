@@ -79,7 +79,8 @@ class Controller:
     def revise_pattern(self, pattern, index):
         unit = self.song.harmony_length
         resolution = pattern.resolution
-        self.removed_event[index] = []
+        if self.removed_event.has_key(index) == False:
+            self.removed_event[index] = []
         for track_index in range(len(pattern)):
             track = pattern[track_index]
             track.make_ticks_abs()
@@ -307,12 +308,14 @@ class Controller:
                 start_new_thread(self.compose, ())
             if play_thread_locked == False:
                 start_new_thread(self.play_samples, ())
+        """
         else:
             if compose_thread_locked == False:
                 (unit, offset) = self.gui.get_unit_offset()
                 start_new_thread(self.impromptu_compose, (unit, offset))
             if play_thread_locked == False:
                 start_new_thread(self.impromptu_play, ())
+        """
     
     def stop(self):        
         self.composition_mutex.acquire()

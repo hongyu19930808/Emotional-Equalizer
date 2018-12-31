@@ -180,7 +180,7 @@ class Instrument:
              'Is Not': [Mood.Sad, Mood.Mysterious, Mood.Romantic, Mood.Calm]}, 
             {'Name': 'Trombone', 'Type': 'Brass', 'ID': 57, 
              'Is': [Mood.Scary, Mood.Comic], 
-             'Is Not': [Mood.Angry]}, 
+             'Is Not': [Mood.Angry, Mood.Calm]}, 
             {'Name': 'Tuba', 'Type': 'Brass', 'ID': 58, 
              'Is': [Mood.Scary, Mood.Comic, Mood.Sad], 
              'Is Not': [Mood.Mysterious, Mood.Romantic]}, 
@@ -392,18 +392,6 @@ class Instrument:
              'Is': [Mood.Angry], 
              'Is Not': [Mood.Scary, Mood.Comic, Mood.Happy, Mood.Sad, Mood.Mysterious, Mood.Romantic, Mood.Calm]}
         ]
-        fin = open('volume.csv', mode = 'r')
-        fin.readline()
-        while True:
-            line = fin.readline().split('\r\n')[0]
-            if line == None or line == '':
-                break
-            elements = line.split(',')
-            if int(elements[0]) >= len(Instrument.descriptions):
-                break
-            for i in range(len(Mood.mood_strs)):
-                Instrument.descriptions[int(elements[0])]['Volume ' + Mood.mood_strs[i]] = float(elements[i+1])
-        fin.close()
     
     @staticmethod
     def get_instruments(mood, seed):
@@ -418,7 +406,7 @@ class Instrument:
                 threshold -= 1
             else:
                 break
-        scores = [{'index': i, 'score': 0, 'volume': 0} for i in range(len(Instrument.descriptions))]
+        scores = [{'index': i, 'score': 0} for i in range(len(Instrument.descriptions))]
         for i in range(len(Instrument.descriptions)):
             for mood_str in mood.keys():
                 score = 1
@@ -426,9 +414,7 @@ class Instrument:
                     score = 2
                 if mood_str in Instrument.descriptions[i]['Is Not']:
                     score = 0
-                volume = Instrument.descriptions[i]['Volume ' + mood_str]
                 scores[i]['score'] += (score * max(0, mood[mood_str] - threshold))
-                scores[i]['volume'] += (volume * max(0, mood[mood_str] - threshold))
         scores.sort(cmp = Instrument.cmp_instruments_score, reverse = True)
         
         picked = []
@@ -438,8 +424,6 @@ class Instrument:
                or score['score'] == current_score \
                or len(picked) < len_pick:
                 index = score['index']
-                final_volume = score['volume'] / baseline
-                Instrument.descriptions[index]['Volume'] = final_volume
                 picked.append(Instrument.descriptions[index])
             else:
                 break

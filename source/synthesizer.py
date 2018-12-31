@@ -17,7 +17,7 @@ class Synthesizer:
         for i in range(3):
             synth = Synth()
             self.synths.append(synth)
-            self.sfids.append(synth.sfload("/Users/hongyu/SoundFonts/crisis.sf2"))
+            self.sfids.append(synth.sfload("/Users/hongyu/SoundFonts/timbres of heaven.sf2"))
         self.status = True
         
     def __del__(self):
@@ -45,10 +45,8 @@ class Synthesizer:
             print 'Harmony: ' + instruments[1]['Name'] + ', ' + instruments[2]['Name']
             print ''
         
-        volumes = []
         for i in range(min(len(instruments), len(self.synths))):
             self.synths[i].program_select(i, self.sfids[i], 0, instruments[i]['ID'])
-            volumes.append(instruments[i]['Volume'])
 
         # generate samples
         samples = []
@@ -67,8 +65,8 @@ class Synthesizer:
                 sample = append(sample, self.synths[i].get_samples(array_length - len(sample) / 2))
             samples.append(sample)
                 
-        combined_samples = samples[0] * (1.0 / volumes[0])
+        combined_samples = samples[0]
         for i in range(1, len(samples)):
-            combined_samples += (samples[i] * (1.0 / volumes[i]))
-        return raw_audio_string(combined_samples * 4)
+            combined_samples += samples[i]
+        return raw_audio_string(combined_samples)
         
