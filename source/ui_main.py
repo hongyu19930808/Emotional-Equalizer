@@ -4,15 +4,8 @@ from tkFileDialog import askopenfilename
 from numpy import mean
 from ui_schedule import ScheduleUI
 from ui_info import InfoUI
+from ui_equalizer import EqualizerUI
 import mt_tkinter as tk
-
-class EqualizerUI:
-    def __init__(self, main_ui):
-        self.main_ui = main_ui
-        self.pop_up_box(main_ui.root)
-        
-    def pop_up_box(self, main_form):
-        self.root = tk.Toplevel(master = main_form)
 
 class MainUI:
     
@@ -36,6 +29,7 @@ class MainUI:
         self.key_state = {}
         self.controller = Controller(self)
         self.schedule_ui = None
+        self.equalizer_ui = None
         self.canvas_data = None
         self.song_length = -1
         self.state = 'normal'
@@ -209,6 +203,17 @@ class MainUI:
             self.schedule_button['state'] = tk.NORMAL
         else:
             self.root.quit()
+            
+    def equalizer(self, event):
+        if self.equalizer_ui != None:
+            return
+        self.equalizer_ui = EqualizerUI(self)
+        self.equalizer_ui.root.mainloop()
+        if self.state == 'normal':
+            self.root.focus()
+            self.equalizer_ui = None
+        else:
+            self.root.quit()
     
     @staticmethod
     def get_keysym(keycode):
@@ -235,8 +240,8 @@ class MainUI:
         self.root = tk.Tk()
         self.root.title('')
         self.root.protocol('WM_DELETE_WINDOW', self.quit_program)
-        # self.root.bind(sequence = '<KeyPress>', func = self.key_press_event)
-        # self.root.bind(sequence = '<KeyRelease>', func = self.key_release_event)
+        self.root.bind(sequence = '<KeyPress>', func = self.key_press_event)
+        self.root.bind(sequence = '<KeyRelease>', func = self.key_release_event)
         
         # set pad
         frame = tk.Frame(master = self.root)
@@ -246,6 +251,7 @@ class MainUI:
         title_label = tk.Label(master = frame, font = ('Arial', 20),
                                text = 'Emotional Equalizer')
         title_label.grid(row = 0, column = 0, columnspan = 5) 
+        title_label.bind(sequence = '<ButtonRelease>', func = self.equalizer)
         tk.Label(master = frame, font = ('Arial', 8)).grid(row = 1, column = 0, columnspan = 5)    
         # mood scales and labels
         mood_positions = [(2, 0), (2, 1), (2, 3), (2, 4), (5, 0), (5, 1), (5, 3), (5, 4)]
@@ -332,8 +338,10 @@ class MainUI:
             # After executing these codes, it will continue to executing the function 'schedule'
             self.schedule_ui.root.withdraw()
             self.schedule_ui.root.quit()
-        else:
-            self.root.quit()
+        if self.equalizer_ui != None:
+            self.equalizer_ui.root.withdraw()
+            self.equalizer_ui.root.quit()
+        self.root.quit()
     
 if __name__ == '__main__':
     MainUI()

@@ -5,6 +5,7 @@ from numpy import append, array, mean, sqrt, maximum, minimum
 from generator import Generator
 from thread import start_new_thread
 from time import sleep
+from scipy.signal import lfilter, lfilter_zi
 
 class Synthesizer:
     def __init__(self):
@@ -33,7 +34,7 @@ class Synthesizer:
         for synth in self.synths:
             synth.system_reset()
 
-    def convert_pattern_to_samples(self, pattern, instruments, unit):
+    def convert_pattern_to_samples(self, pattern, instruments, unit, digital_filter):
         while self.status == False:
             sleep(0.01)
         resolution = pattern.resolution
@@ -68,5 +69,11 @@ class Synthesizer:
         combined_samples = samples[0]
         for i in range(1, len(samples)):
             combined_samples += samples[i]
+        if len(digital_filter['a']) >= 2:
+            max_original = max(abs(combined_samples))
+            zi = lfilter_zi(digital_filter['b'], digital_filter['a'])
+            (combined_samples, _) = lfilter(digital_filter['b'], digital_filter['a'], 
+                                       combined_samples, zi = zi * combined_samples[0])
+            max_filtered = max(abs(combined_samples))
+            combined_samples = combined_samples * (max_original / max_filtered)
         return raw_audio_string(combined_samples)
-        

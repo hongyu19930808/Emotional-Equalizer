@@ -14,6 +14,7 @@ class Controller:
         self.gui = gui
         self.song = None
         self.inpromptu = None
+        self.digital_filter = {'b': [1], 'a': [1]}
         
         # used by several threads
         self.composition_mutex = Lock()
@@ -143,7 +144,7 @@ class Controller:
                 self.patterns[next_index] = pattern
                 self.tonalities[next_index] = tonality
                 self.instruments[next_index] = instruments
-                samples = self.synth.convert_pattern_to_samples(pattern, instruments, unit)          
+                samples = self.synth.convert_pattern_to_samples(pattern, instruments, unit, self.digital_filter)          
                 
                 self.composition_mutex.acquire()
                 self.next_samples = samples
@@ -217,7 +218,7 @@ class Controller:
                 self.patterns[next_index] = pattern
                 self.tonalities[next_index] = tonality
                 self.instruments[next_index] = instruments
-                samples = self.synth.convert_pattern_to_samples(pattern, instruments, unit)          
+                samples = self.synth.convert_pattern_to_samples(pattern, instruments, unit, self.digital_filter)          
                 
                 self.composition_mutex.acquire()
                 self.next_samples = samples
@@ -308,6 +309,7 @@ class Controller:
                 start_new_thread(self.compose, ())
             if play_thread_locked == False:
                 start_new_thread(self.play_samples, ())
+        # To be finished !!
         """
         else:
             if compose_thread_locked == False:
