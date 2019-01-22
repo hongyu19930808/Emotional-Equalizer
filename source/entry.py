@@ -1,4 +1,4 @@
-from gui import MainUI
+from ui_main import MainUI
 import os
 import sys
 
