@@ -1,7 +1,7 @@
 from midi_operation import MIDI
 from fluidsynth import Synth, raw_audio_string
 from midi import Track, NoteOnEvent, NoteOffEvent
-from numpy import append, array, mean, sqrt, maximum, minimum
+from numpy import append, array, ndarray
 from generator import Generator
 from thread import start_new_thread
 from time import sleep
@@ -71,9 +71,28 @@ class Synthesizer:
             combined_samples += samples[i]
         if len(digital_filter['a']) >= 2:
             max_original = max(abs(combined_samples))
+            len_trans_clip = 44
+            trans_clip_begin = combined_samples[:len_trans_clip * 2].copy()
+            trans_clip_end = combined_samples[-len_trans_clip * 2:].copy()
             zi = lfilter_zi(digital_filter['b'], digital_filter['a'])
-            (combined_samples, _) = lfilter(digital_filter['b'], digital_filter['a'], 
-                                       combined_samples, zi = zi * combined_samples[0])
+            # filter the left channel and the right channel separately
+            reshaped_samples = combined_samples.reshape(len(combined_samples) / 2, 2)
+            (left_channel, right_channel) = (reshaped_samples[:, 0], reshaped_samples[:, 1])
+            (left_channel, _) = lfilter(digital_filter['b'], digital_filter['a'], 
+                                       left_channel, zi = zi * left_channel[0])
+            (right_channel, _) = lfilter(digital_filter['b'], digital_filter['a'], 
+                                       right_channel, zi = zi * right_channel[0])
+            reshaped_samples[:, 0] = left_channel
+            reshaped_samples[:, 1] = right_channel
+            combined_samples = reshaped_samples.reshape(1, len(combined_samples))
+            combined_samples = combined_samples[0]
             max_filtered = max(abs(combined_samples))
             combined_samples = combined_samples * (max_original / max_filtered)
+            # make it smoothly connect to the previous samples
+            for i in xrange(len_trans_clip * 2):
+                combined_samples[i] = combined_samples[i] * ((i / 2) / float(len_trans_clip)) \
+                    + trans_clip_begin[i] * (1 - (i / 2) / float(len_trans_clip))
+            for i in xrange(len_trans_clip * 2):
+                combined_samples[-(i+1)] = combined_samples[-(i+1)] * ((i / 2) / float(len_trans_clip)) \
+                    + trans_clip_end[-(i+1)] * (1 - (i / 2) / float(len_trans_clip))
         return raw_audio_string(combined_samples)
