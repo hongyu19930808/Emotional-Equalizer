@@ -88,6 +88,7 @@ class Synthesizer:
             combined_samples = combined_samples[0]
             max_filtered = max(abs(combined_samples))
             combined_samples = combined_samples * (max_original / max_filtered)
+            """
             # make it smoothly connect to the previous samples
             for i in xrange(len_trans_clip * 2):
                 combined_samples[i] = combined_samples[i] * ((i / 2) / float(len_trans_clip)) \
@@ -95,4 +96,5 @@ class Synthesizer:
             for i in xrange(len_trans_clip * 2):
                 combined_samples[-(i+1)] = combined_samples[-(i+1)] * ((i / 2) / float(len_trans_clip)) \
                     + trans_clip_end[-(i+1)] * (1 - (i / 2) / float(len_trans_clip))
+            """
         return raw_audio_string(combined_samples)
