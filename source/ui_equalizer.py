@@ -85,7 +85,8 @@ class EqualizerUI:
         
         digital_b = digital_b.coeffs
         digital_a = digital_a.coeffs
-        self.plot(digital_b, digital_a, sampling_rate)
+        max_coeff = self.plot(digital_b, digital_a, sampling_rate)
+        digital_b /= max_coeff
         self.main_ui.controller.digital_filter = {'b': digital_b, 'a': digital_a}
         
     def convert_radian_s_to_z(self, w_analog, T = 1.0):
@@ -107,10 +108,12 @@ class EqualizerUI:
         plt.set_xlabel('Frequency [Hz]')
         plt.set_ylabel('Normalized Amplitude [dB]')         
         plt.set_xscale('log')
-        h *= (1.0 / max(abs(h)))
+        max_h = max(abs(h))
+        h /= max_h
         plt.plot(w / (2 * np.pi) * sampling_rate, 20 * np.log10(abs(h)), color = 'blue')
         plt.grid()
         self.canvas.draw()
+        return max_h
         
     def pop_up_box(self, main_form):
         self.root = tk.Toplevel(master = main_form)
@@ -132,24 +135,24 @@ class EqualizerUI:
         # low pass butterworth
         self.add_filter('LPB', 'Low Pass\nButterworth', 400, 20, column_index = 0)
         # low pass shelving
-        self.add_filter('LPS', 'Low Pass\nShelving', 1, 100, column_index = 1)
+        self.add_filter('LPS', 'Low Pass\nShelving', 1, 60, column_index = 1)
         # low pass spectral tilt
         self.add_filter('LPT', 'Low Pass\nSepc Tilt', 1, 20, column_index = 2)        
         # high pass butterworth
         self.add_filter('HPB', 'High Pass\nButterworth', 1000, 20000, column_index = 3)
         # high pass shelving
-        self.add_filter('HPS', 'High Pass\nShelving', 1, 100, column_index = 4)
+        self.add_filter('HPS', 'High Pass\nShelving', 1, 60, column_index = 4)
         # high pass spectral tilt
         self.add_filter('HPT', 'High Pass\nSpec Tilt', 1, 20, column_index = 5)
         # peak filter 1
         self.add_filter('PK1', 'Peak 1\nCenter', 20, 100, column_index = 6, column_span = 2)
-        self.add_filter('PK1-Width', 'Peak 1\nBand Width', 1, 400, column_index = 7, show_switch = False)
+        self.add_filter('PK1-Width', 'Peak 1\nBand Width', 1, 100, column_index = 7, show_switch = False)
         # peak filter 2
         self.add_filter('PK2', 'Peak 2\nCenter', 100, 500, column_index = 8, column_span = 2)
-        self.add_filter('PK2-Width', 'Peak 2\nBand Width', 5, 2000, column_index = 9, show_switch = False)
+        self.add_filter('PK2-Width', 'Peak 2\nBand Width', 5, 500, column_index = 9, show_switch = False)
         # peak filter 3
         self.add_filter('PK3', 'Peak 3\nCenter', 500, 2000, column_index = 10, column_span = 2)
-        self.add_filter('PK3-Width', 'Peak 3\nBand Width', 20, 8000, column_index = 11, show_switch = False)
+        self.add_filter('PK3-Width', 'Peak 3\nBand Width', 20, 2000, column_index = 11, show_switch = False)
         # peak filter 4
         self.add_filter('PK4', 'Peak 4\nCenter', 2000, 20000, column_index = 12, column_span = 2)
         self.add_filter('PK4-Width', 'Peak 4\nBand Width', 100, 20000, column_index = 13, show_switch = False)        

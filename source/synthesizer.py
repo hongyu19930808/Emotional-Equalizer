@@ -5,7 +5,7 @@ from numpy import append, array, ndarray
 from generator import Generator
 from thread import start_new_thread
 from time import sleep
-from scipy.signal import lfilter, lfilter_zi
+from scipy.signal import lfilter
 
 class Synthesizer:
     def __init__(self):
@@ -34,7 +34,8 @@ class Synthesizer:
         for synth in self.synths:
             synth.system_reset()
 
-    def convert_pattern_to_samples(self, pattern, instruments, unit, digital_filter):
+    def convert_pattern_to_samples(self, pattern, instruments, unit, 
+                                   digital_filter, left_channel_tail, right_channel_tail):
         while self.status == False:
             sleep(0.01)
         resolution = pattern.resolution
@@ -69,32 +70,38 @@ class Synthesizer:
         combined_samples = samples[0]
         for i in range(1, len(samples)):
             combined_samples += samples[i]
+            
+        # filter the left channel and the right channel separately
         if len(digital_filter['a']) >= 2:
             max_original = max(abs(combined_samples))
-            len_trans_clip = 44
-            trans_clip_begin = combined_samples[:len_trans_clip * 2].copy()
-            trans_clip_end = combined_samples[-len_trans_clip * 2:].copy()
-            zi = lfilter_zi(digital_filter['b'], digital_filter['a'])
-            # filter the left channel and the right channel separately
-            reshaped_samples = combined_samples.reshape(len(combined_samples) / 2, 2)
-            (left_channel, right_channel) = (reshaped_samples[:, 0], reshaped_samples[:, 1])
-            (left_channel, _) = lfilter(digital_filter['b'], digital_filter['a'], 
-                                       left_channel, zi = zi * left_channel[0])
-            (right_channel, _) = lfilter(digital_filter['b'], digital_filter['a'], 
-                                       right_channel, zi = zi * right_channel[0])
-            reshaped_samples[:, 0] = left_channel
-            reshaped_samples[:, 1] = right_channel
-            combined_samples = reshaped_samples.reshape(1, len(combined_samples))
-            combined_samples = combined_samples[0]
-            max_filtered = max(abs(combined_samples))
-            combined_samples = combined_samples * (max_original / max_filtered)
-            """
-            # make it smoothly connect to the previous samples
-            for i in xrange(len_trans_clip * 2):
-                combined_samples[i] = combined_samples[i] * ((i / 2) / float(len_trans_clip)) \
-                    + trans_clip_begin[i] * (1 - (i / 2) / float(len_trans_clip))
-            for i in xrange(len_trans_clip * 2):
-                combined_samples[-(i+1)] = combined_samples[-(i+1)] * ((i / 2) / float(len_trans_clip)) \
-                    + trans_clip_end[-(i+1)] * (1 - (i / 2) / float(len_trans_clip))
-            """
-        return raw_audio_string(combined_samples)
+            num_samples_mono = len(combined_samples) / 2
+            reshaped_samples = combined_samples.reshape(num_samples_mono, 2)
+            num_samples_tail = 4410
+            
+            left_channel = reshaped_samples[:, 0]
+            left_channel_extend = ndarray(num_samples_mono + num_samples_tail)
+            left_channel_extend.fill(0)
+            left_channel_extend[:num_samples_mono] = left_channel
+            
+            right_channel = reshaped_samples[:, 1]
+            right_channel_extend = ndarray(num_samples_mono + num_samples_tail)
+            right_channel_extend.fill(0)
+            right_channel_extend[:num_samples_mono] = right_channel
+            
+            # filter
+            left_channel_extend = lfilter(digital_filter['b'], digital_filter['a'], left_channel_extend)
+            right_channel_extend = lfilter(digital_filter['b'], digital_filter['a'], right_channel_extend)
+            
+            combined_samples = ndarray([num_samples_mono, 2])
+            combined_samples[:, 0] = left_channel_extend[:num_samples_mono]
+            combined_samples[:, 1] = right_channel_extend[:num_samples_mono]
+            
+            if left_channel_tail is not None and right_channel_tail is not None:
+                combined_samples[:num_samples_tail, 0] += left_channel_tail
+                combined_samples[:num_samples_tail, 1] += right_channel_tail
+                
+            combined_samples = combined_samples.flatten()
+            left_channel_tail = left_channel_extend[-num_samples_tail:]
+            right_channel_tail = right_channel_extend[-num_samples_tail:]
+            
+        return raw_audio_string(combined_samples), left_channel_tail, right_channel_tail
