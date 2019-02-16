@@ -117,6 +117,7 @@ class Controller:
         self.removed_event = {}
         left_channel_tail = None
         right_channel_tail = None
+        last_ratio = 1
         
         while True:
             if self.get_status() == 'stop':
@@ -142,13 +143,14 @@ class Controller:
                 break
             
             if local_need_compose == True:
-                (pattern, tonality, instruments) = self.song.compose(local_mood, next_index)
+                (pattern, tonality, instruments, dynamic_offset) = self.song.compose(local_mood, next_index)
                 pattern = self.revise_pattern(pattern, next_index)
                 self.patterns[next_index] = pattern
                 self.tonalities[next_index] = tonality
                 self.instruments[next_index] = instruments
-                (samples, left_channel_tail, right_channel_tail) = self.synth.convert_pattern_to_samples(
-                    pattern, instruments, unit, self.digital_filter, left_channel_tail, right_channel_tail)               
+                (samples, left_channel_tail, right_channel_tail, last_ratio) = self.synth.convert_pattern_to_samples(
+                    pattern, instruments, unit, self.digital_filter, 
+                    left_channel_tail, right_channel_tail, dynamic_offset, last_ratio)               
                 
                 self.composition_mutex.acquire()
                 self.next_samples = samples
@@ -210,6 +212,8 @@ class Controller:
         self.inpromptu = Impromptu(unit, offset)
         left_channel_tail = None
         right_channel_tail = None
+        last_ratio = 1
+        
         while True:
             if self.get_status() == 'stop':
                 break
@@ -221,11 +225,13 @@ class Controller:
             
             if local_need_compose == True:
                 (pattern, tonality, instruments) = self.inpromptu.compose(local_mood)
+                dynamic_offset = Generator.gen_dynamic_parameter(local_mood)
                 self.patterns[next_index] = pattern
                 self.tonalities[next_index] = tonality
                 self.instruments[next_index] = instruments
-                (samples, left_channel_tail, right_channel_tail) = self.synth.convert_pattern_to_samples(
-                    pattern, instruments, unit, self.digital_filter, left_channel_tail, right_channel_tail)          
+                (samples, left_channel_tail, right_channel_tail, last_ratio) = self.synth.convert_pattern_to_samples(
+                    pattern, instruments, unit, self.digital_filter, 
+                    left_channel_tail, right_channel_tail, dynamic_offset, last_ratio)          
                 
                 self.composition_mutex.acquire()
                 self.next_samples = samples

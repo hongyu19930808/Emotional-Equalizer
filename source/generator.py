@@ -65,13 +65,14 @@ class Song:
             self.tonality = self.tonalities[-1]
         melody_param = self.generate_melody_parameter(mood)
         harmony_param = self.generate_harmony_parameter(mood)
+        max_dynamic = 0
         if index >= self.num_chord:
             pattern = MIDI.new_pattern()
             pattern.append(Generator.generate_track([], melody_param['tempo'] * self.tempo_multiplier))
             pattern.append(Generator.generate_track([], harmony_param['tempo'] * self.tempo_multiplier))
             pattern.append(Generator.generate_track([], harmony_param['tempo'] * self.tempo_multiplier))
         else:
-            (melody_annotated_notes, adjustable) = self.generate_melody(melody_param, index)
+            (melody_annotated_notes, adjustable, max_dynamic) = self.generate_melody(melody_param, index)
             Generator.adjust_mode_for_harmony(adjustable, self.tonality, melody_param, harmony_param)
             self.adjusted_progressions = Composer.adjust_progression(self.progression_notations, self.annotated_important_notes, harmony_param)
             harmony_annotated_notes = self.generate_harmony(harmony_param, index)
@@ -103,7 +104,9 @@ class Song:
             print tonality_name_major[tonality['key']], 'Major'
         else:
             print tonality_name_minor[tonality['key']], 'Minor'
-        return (pattern, tonality, instruments)
+        
+        dynamic_offset = Generator.gen_dynamic_parameter(mood) + (max_dynamic - 90)
+        return (pattern, tonality, instruments, dynamic_offset)
     
     def generate_melody_parameter(self, mood):
         param_basic = {
@@ -132,8 +135,11 @@ class Song:
         important_notes = self.select_notes(self.annotated_important_notes, index)
         # calculate whether we can use the borrowed chord in harmony
         adjustable = (len(important_notes) > 0 and important_notes[0]['notation'] in [1,2,4,5])
+        dynamics = [annotated_note['note'].dynamic for annotated_note in annotated_notes]
+        dynamics.append(0)
+        max_dynamic = max(dynamics)
         (annotated_notes, tonality) = Generator.add_effects(annotated_notes, tonality, param)
-        return (annotated_notes, adjustable)
+        return (annotated_notes, adjustable, max_dynamic)
     
     def generate_harmony(self, param, index):       
         (annotated_notes, tonality) = Generator.add_bass(
