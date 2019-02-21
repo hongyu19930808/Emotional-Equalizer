@@ -108,7 +108,7 @@ class Synthesizer:
         original_volume = mean(vdB[0:len(vdB)/5])
         desired_volume = 60 + dynamic_offset * 0.5
         ratio = sqrt(pow(10, (desired_volume - original_volume) / 10.0))
-        max_ratio = pow(2.0, 14) / max(max(abs(left_channel)), max(abs(right_channel)))
+        max_ratio = (pow(2.0, 15) - 1) / max(max(abs(left_channel)), max(abs(right_channel)))
         ratio = min(ratio, max_ratio)
         last_ratio = min(last_ratio, max_ratio)
         if ratio / last_ratio < 1.1 and ratio / last_ratio > 0.9:

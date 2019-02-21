@@ -105,3 +105,4 @@ source 2018-09-05.zip
 app/app.zip
 app/app.zip
 source/cal_frequency_response.py
+*.wav
