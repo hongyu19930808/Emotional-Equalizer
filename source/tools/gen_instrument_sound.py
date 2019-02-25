@@ -4,7 +4,7 @@ import numpy
 
 channel = 0
 pitch = 60
-velocity = 90
+velocity = 80
 duration = 1
 sampling_rate = 44100
 

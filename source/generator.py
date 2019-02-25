@@ -55,7 +55,7 @@ class Song:
             mean_pitch += 7
         for note in melody_notes:
             if note.is_rest() == False:
-                note.dynamic = max(0, min(120, note.dynamic + 90 - mean_dynamic))
+                note.dynamic = max(0, min(120, note.dynamic + 80 - mean_dynamic))
                 note.pitch = note.pitch + pitch_shift
     
     def compose(self, mood, index):
@@ -105,7 +105,7 @@ class Song:
         else:
             print tonality_name_minor[tonality['key']], 'Minor'
         
-        dynamic_offset = Generator.gen_dynamic_parameter(mood) + (max_dynamic - 90)
+        dynamic_offset = Generator.gen_dynamic_parameter(mood) + (max_dynamic - 80)
         return (pattern, tonality, instruments, dynamic_offset)
     
     def generate_melody_parameter(self, mood):
