@@ -309,6 +309,22 @@ class MIDI:
             raise('Not Supported')
         
     @staticmethod
+    def copy_track(original_track, channel_offset = 1, default_tempo = 100):
+        set_tempo_event = SetTempoEvent()
+        set_tempo_event.set_bpm(default_tempo)
+        for event in original_track:
+            if type(event) is SetTempoEvent:
+                set_tempo_event = event
+        
+        new_track = Track(events = [MIDI.copy_event(set_tempo_event)], tick_relative = True)
+        for event in original_track:
+            if type(event) is NoteOnEvent or type(event) is NoteOffEvent:
+                copied_event = MIDI.copy_event(event)
+                copied_event.channel += channel_offset
+                new_track.append(copied_event)
+        return new_track
+        
+    @staticmethod
     def separate_track(original_track, num_track = 1, default_tempo = 100):
         set_tempo_event = SetTempoEvent()
         set_tempo_event.set_bpm(default_tempo)

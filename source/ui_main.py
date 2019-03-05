@@ -251,8 +251,11 @@ class MainUI:
         title_label = tk.Label(master = frame, font = ('Arial', 20),
                                text = 'Emotional Equalizer')
         title_label.grid(row = 0, column = 0, columnspan = 5) 
-        title_label.bind(sequence = '<ButtonRelease>', func = self.equalizer)
-        tk.Label(master = frame, font = ('Arial', 8)).grid(row = 1, column = 0, columnspan = 5)    
+        tk.Label(master = frame, font = ('Arial', 8)).grid(row = 1, column = 0, columnspan = 5)
+        
+        # disable the equalizer interface
+        # title_label.bind(sequence = '<ButtonRelease>', func = self.equalizer)        
+        
         # mood scales and labels
         mood_positions = [(2, 0), (2, 1), (2, 3), (2, 4), (5, 0), (5, 1), (5, 3), (5, 4)]
         for i in range(len(Mood.mood_strs)):

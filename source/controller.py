@@ -8,6 +8,7 @@ from thread import start_new_thread
 from time import sleep, time
 from impromptu import Impromptu
 from random import randint
+from ui_equalizer import EqualizerUI
 
 class Controller:
     def __init__(self, gui):
@@ -148,9 +149,15 @@ class Controller:
                 self.patterns[next_index] = pattern
                 self.tonalities[next_index] = tonality
                 self.instruments[next_index] = instruments
-                (samples, left_channel_tail, right_channel_tail, last_ratio) = self.synth.convert_pattern_to_samples(
+                
+                value = max(local_mood['Angry'], local_mood['Scary'], local_mood['Comic'], local_mood['Happy']) - \
+                    max(local_mood['Sad'], local_mood['Mysterious'], local_mood['Romantic'], local_mood['Calm'])
+                value /= 100.0;
+                self.digital_filter = EqualizerUI.cal_spectral_tilt(value)
+                
+                (samples, left_channel_tail, right_channel_tail) = self.synth.convert_pattern_to_samples(
                     pattern, instruments, unit, self.digital_filter, 
-                    left_channel_tail, right_channel_tail, dynamic_offset, last_ratio)               
+                    left_channel_tail, right_channel_tail, dynamic_offset)
                 
                 self.composition_mutex.acquire()
                 self.next_samples = samples
@@ -212,7 +219,6 @@ class Controller:
         self.inpromptu = Impromptu(unit, offset)
         left_channel_tail = None
         right_channel_tail = None
-        last_ratio = 1
         
         while True:
             if self.get_status() == 'stop':
@@ -229,9 +235,9 @@ class Controller:
                 self.patterns[next_index] = pattern
                 self.tonalities[next_index] = tonality
                 self.instruments[next_index] = instruments
-                (samples, left_channel_tail, right_channel_tail, last_ratio) = self.synth.convert_pattern_to_samples(
+                (samples, left_channel_tail, right_channel_tail) = self.synth.convert_pattern_to_samples(
                     pattern, instruments, unit, self.digital_filter, 
-                    left_channel_tail, right_channel_tail, dynamic_offset, last_ratio)          
+                    left_channel_tail, right_channel_tail, dynamic_offset)          
                 
                 self.composition_mutex.acquire()
                 self.next_samples = samples

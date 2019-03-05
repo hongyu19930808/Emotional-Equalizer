@@ -431,7 +431,7 @@ class Instrument:
         
         index_offset = 0
         result = []
-        # melody instrument
+        # melody instrument 1
         while index_offset < len_pick:
             index = (seed + index_offset) % len(picked)
             if picked[index].has_key('Remark') and picked[index]['Remark'] == 'NH':
@@ -440,7 +440,17 @@ class Instrument:
             else:
                 result.append(picked[index])
                 index_offset += 1
-                break    
+                break
+        # melody instrument 2
+        while index_offset < len_pick:
+            index = (seed + index_offset) % len(picked)
+            if picked[index].has_key('Remark') and picked[index]['Remark'] == 'NH':
+                index_offset += 1
+                continue
+            else:
+                result.append(picked[index])
+                index_offset += 1
+                break
         # harmony instrument 1
         while index_offset < len_pick:
             index = (seed + index_offset) % len(picked)
@@ -461,11 +471,11 @@ class Instrument:
                 result.append(picked[index])
                 index_offset += 1
                 break        
-        while len(result) < 3:
+        while len(result) < 4:
             index = (seed + index_offset) % len(picked)
             result.append(picked[index])
             index_offset += 1
-        return (result, index_offset - 3)
+        return (result, index_offset - 4)
     
     @staticmethod            
     def cmp_instruments_score(score_1, score_2):

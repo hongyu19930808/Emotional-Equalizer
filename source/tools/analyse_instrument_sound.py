@@ -2,6 +2,7 @@ import wave
 import struct
 import numpy
 import pylab
+import librosa
 
 class Instrument(object):
     
@@ -11,12 +12,14 @@ class Instrument(object):
         self._abs_fft_results = None
         self._frequency_interval = None
         self._centroid = None
+        self._spectrum_std = None
         self._spectrum_percentile = None
         self._name = ''
         if path != None:
             self._read_samples(path)
             self._fft()
             self._calculate_centroid()
+            self._calculate_spectrum_std()
             self._calculate_spectrum_percentile()
             
     def cumulative_percentage(self, lower_frequency = 0, upper_frequency = 22050):
@@ -27,15 +30,26 @@ class Instrument(object):
         lower_index = max(0, int(numpy.ceil(lower_frequency / frequency_interval)))
         upper_index = min(len(abs_fft) - 1, int(numpy.floor(upper_frequency / frequency_interval)))
         return round(100.0 * sum(abs_fft[lower_index:upper_index+1]) / sum(abs_fft), 2)
-            
-    def plot_spectrum(self):
+    
+    @property
+    def spectral_flatness(self):
         if self._abs_fft_results is None or self._frequency_interval is None:
             self._fft()
         abs_fft = self._abs_fft_results
         frequency_interval = self._frequency_interval
-        x_value = numpy.array(range(len(abs_fft))) * frequency_interval
+        numerator = numpy.exp(numpy.mean(2 * numpy.log(abs_fft)))
+        dominator = numpy.mean(abs_fft ** 2)
+        return numpy.log10(numerator / dominator) * 10
+        
+    def plot_spectrum(self, save = True, show = True):
+        if self._abs_fft_results is None or self._frequency_interval is None:
+            self._fft()
+        abs_fft = self._abs_fft_results
+        frequency_interval = self._frequency_interval
+        fundamental_frequency = 220 * pow(2, 0.25)
+        x_value = numpy.array(range(len(abs_fft))) * frequency_interval / fundamental_frequency
         y_value = abs_fft
-        thershold = max(y_value) / 100.0
+        thershold = 0
         index = len(abs_fft) - 1
         while True:
             if y_value[index] >= thershold:
@@ -43,7 +57,11 @@ class Instrument(object):
             index -= 1
         plot = pylab.subplot(111)
         plot.plot(x_value[:index+1], y_value[:index+1])
-        pylab.show()        
+        if save == True:
+            pylab.savefig('./spectrum/instrument_' + str(self._name).zfill(3) + '.png', dpi = 300)        
+        if show == True:
+            pylab.show()
+        pylab.clf()
             
     def _calculate_spectrum_percentile(self):
         abs_fft = self._abs_fft_results
@@ -56,7 +74,7 @@ class Instrument(object):
         for i in xrange(len(abs_fft)):
             sum_abs_fft += abs_fft[i]
             while percentile < 100 and sum_abs_fft >= sum_percentile[percentile]:
-                self._spectrum_percentile.append(i)
+                self._spectrum_percentile.append(i * frequency_interval)
                 percentile += 1
             if percentile == 100:
                 break
@@ -72,13 +90,28 @@ class Instrument(object):
         self._centroid = numerator / dominator
         return self._centroid
     
-    def _fft(self, skip_onset_time = 0):
+    def _calculate_spectrum_std(self):
+        if self._centroid is None:
+            self._calculate_centroid()
+        numerator = 0
+        dominator = 0
+        abs_fft = self._abs_fft_results
+        frequency_interval = self._frequency_interval
+        # Var(X) = E(X*X) - E(X)*E(X)
+        for i in xrange(len(abs_fft)):
+            numerator += (abs_fft[i] * ((i * frequency_interval) ** 2))
+            dominator += abs_fft[i]
+        self._spectrum_std = numpy.sqrt(numerator / dominator - self._centroid ** 2)
+        return self._spectrum_std
+    
+    def _fft(self, start_time = None, end_time = None):
         if len(self.samples) == 0:
             raise(Exception("No Instrument's Data"));
-        samples = self._samples * numpy.hamming(len(self._samples))
-        num_frame_skipped = int(skip_onset_time * self._frame_rate)
-        samples = samples[num_frame_skipped:]
-        self._abs_fft_results = abs(numpy.fft.rfft(samples))
+        samples = self._samples
+        start_index = 0 if start_time is None else max(0, int(start_time * self._frame_rate))
+        end_index = len(samples) if end_time is None else max(0, int(end_time * self._frame_rate))
+        samples = samples[start_index:end_index]
+        self._abs_fft_results = abs(numpy.fft.rfft(samples)) / len(samples)
         self._frequency_interval = float(self._frame_rate) / len(samples)
     
     def _read_samples(self, path):
@@ -103,8 +136,10 @@ class Instrument(object):
         elements = []
         elements.append(self._name)
         elements.append(round(self._centroid, 2))
-        elements.append(self._spectrum_percentile[50])
-        elements.append(self._spectrum_percentile[80])
+        elements.append(round(self._spectrum_std, 2))
+        elements.append(round(self.spectral_flatness, 2))
+        elements.append(round(self._spectrum_percentile[50], 2))
+        elements.append(round(self._spectrum_percentile[85], 2))
         elements.append(self.cumulative_percentage(50, 200))
         elements.append(self.cumulative_percentage(200, 500))
         elements.append(self.cumulative_percentage(500, 2000))
@@ -161,4 +196,3 @@ if __name__ == '__main__':
         instrument = Instrument('./sounds/instrument_' + str(ins_id).zfill(3) + '.wav')
         instrument.name = str(ins_id)
         print instrument
-        

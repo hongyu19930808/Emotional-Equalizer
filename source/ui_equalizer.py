@@ -88,12 +88,35 @@ class EqualizerUI:
         max_coeff = self.plot(digital_b, digital_a, sampling_rate)
         digital_b /= max_coeff
         self.main_ui.controller.digital_filter = {'b': digital_b, 'a': digital_a}
+    
+    @staticmethod
+    def cal_spectral_tilt(value):
+        sampling_rate = 44100.0
+        analog_b = np.poly1d([1])
+        analog_a = np.poly1d([1])           
+        pole = (20.0 / sampling_rate) * 2.0 * np.pi
+        zero = (20.0 / sampling_rate) * 2.0 * np.pi / pow(np.sqrt(10.0), value)
+        for i in range(6):
+            analog_b *= [1, EqualizerUI.convert_radian_z_to_s(zero)]
+            analog_a *= [1, EqualizerUI.convert_radian_z_to_s(pole)]
+            pole *= np.sqrt(10.0)
+            zero *= np.sqrt(10.0)
+        (digital_b, digital_a) = signal.bilinear(analog_b.coeffs, analog_a.coeffs)
         
-    def convert_radian_s_to_z(self, w_analog, T = 1.0):
+        start_freq = np.pi / pow(2, 12)
+        worN = [start_freq * pow(2, i / 10.0) for i in xrange(120)]
+        (w, h) = signal.freqz(digital_b, digital_a, worN)        
+        max_coeff = max(abs(h))
+        digital_b /= max_coeff
+        return {'b': digital_b, 'a': digital_a}        
+        
+    @staticmethod
+    def convert_radian_s_to_z(w_analog, T = 1.0):
         w_digital = 2 / T * np.arctan(w_analog * T / 2.0)
         return w_digital
     
-    def convert_radian_z_to_s(self, w_digital, T = 1.0):
+    @staticmethod
+    def convert_radian_z_to_s(w_digital, T = 1.0):
         w_analog = 2 / T * np.tan(w_digital * T / 2.0)
         return w_analog
         

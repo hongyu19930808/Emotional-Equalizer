@@ -1,21 +1,24 @@
 from midi_operation import MIDI
 from fluidsynth import Synth, raw_audio_string
 from midi import Track, NoteOnEvent, NoteOffEvent
-from numpy import append, array, ndarray, poly1d, exp, log10, sqrt, mean
+from numpy import append, array, ndarray, poly1d, exp, log10, sqrt, mean, pi
 from generator import Generator
 from thread import start_new_thread
 from time import sleep
-from scipy.signal import lfilter, butter
+from scipy.signal import lfilter, bilinear
 
 class Synthesizer:
+    
     def __init__(self):
         self.status = False
         start_new_thread(self.init_background, ())
+        (Synthesizer.ear_b, Synthesizer.ear_a) = Synthesizer.get_ear_filter()
         
     def init_background(self):
         self.synths = []
         self.sfids = []
-        for i in range(3):
+        self.last_instruments = []
+        for i in range(4):
             synth = Synth()
             self.synths.append(synth)
             self.sfids.append(synth.sfload("/Users/hongyu/SoundFonts/timbres of heaven.sf2"))
@@ -33,10 +36,11 @@ class Synthesizer:
             sleep(0.01)
         for synth in self.synths:
             synth.system_reset()
+        self.last_instruments = []
 
     def convert_pattern_to_samples(self, pattern, instruments, unit, digital_filter,
                                    left_channel_tail = None, right_channel_tail = None, 
-                                   dynamic_offset = 0, last_ratio = 1):        
+                                   dynamic_offset = 0):        
         while self.status == False:
             sleep(0.01)
         
@@ -45,9 +49,16 @@ class Synthesizer:
         sampling_rate = 44100.0
         array_length = int(unit * 60.0 / tempo * sampling_rate)
         
-        if len(instruments) >= 3:
-            print 'Melody: ' + instruments[0]['Name']
-            print 'Harmony: ' + instruments[1]['Name'] + ', ' + instruments[2]['Name']
+        if len(instruments) >= 4:
+            if len(self.last_instruments) >= 4:
+                instrument_ids = [ins['ID'] for ins in [instruments[0], self.last_instruments[0], instruments[1], self.last_instruments[1]]]
+                # gradually change
+                if len(set(instrument_ids)) >= 4:
+                    instruments[1] = instruments[0]
+                    instruments[0] = self.last_instruments[1]
+            self.last_instruments = [instruments[0], instruments[1], instruments[2], instruments[3]]
+            print 'Melody: ' + instruments[0]['Name'] + ', ' + instruments[1]['Name']
+            print 'Harmony: ' + instruments[2]['Name'] + ', ' + instruments[3]['Name']
             print ''
         
         for i in range(min(len(instruments), len(self.synths))):
@@ -71,6 +82,8 @@ class Synthesizer:
             samples.append(sample)
                 
         # combine different instruments
+        samples[0] *= 1.0 / pow(2, 0.5)
+        samples[1] *= 1.0 / pow(2, 0.5)
         combined_samples = samples[0]
         for i in range(1, len(samples)):
             combined_samples += samples[i]
@@ -84,18 +97,10 @@ class Synthesizer:
         left_channel = lfilter(digital_filter['b'], digital_filter['a'], left_channel)
         right_channel = lfilter(digital_filter['b'], digital_filter['a'], right_channel)
         
-        # add the previous filter results in order to make the transition smooth
-        if left_channel_tail is not None and right_channel_tail is not None:
-            left_channel[:num_samples_tail] += left_channel_tail
-            right_channel[:num_samples_tail] += right_channel_tail          
-        
         # calculate the perceptual volume
         frame_length = 1024
         c = exp(-1.0/frame_length)
-        (ear_b_high, ear_a_high) = butter(1, 0.01, btype = 'high')
-        (ear_b_low, ear_a_low) = butter(1, 0.6, btype = 'low')
-        ear_b = poly1d(ear_b_high) * poly1d(ear_b_low)
-        ear_a = poly1d(ear_a_high) * poly1d(ear_a_low)
+        (ear_b, ear_a) = (Synthesizer.ear_b, Synthesizer.ear_a)
         ear_filtered_left_square = lfilter(ear_b, ear_a, left_channel) ** 2
         ear_filtered_right_square = lfilter(ear_b, ear_a, right_channel) ** 2
         vms_left = lfilter([1-c], [1, -c], ear_filtered_left_square[:num_samples_mono])
@@ -105,22 +110,21 @@ class Synthesizer:
         iterator = xrange(frame_length - 1, num_samples_mono, frame_length)
         vdB = [10.0 * log10(max(vms_left[i], vms_right[i])) for i in iterator]         
         vdB.sort(reverse = True)
+        
         original_volume = mean(vdB[0:len(vdB)/5])
-        desired_volume = 60 + dynamic_offset * 0.5
+        desired_volume = (60 + dynamic_offset * 0.2) if dynamic_offset > -50 else 0
         ratio = sqrt(pow(10, (desired_volume - original_volume) / 10.0))
         max_ratio = (pow(2.0, 15) - 1) / max(max(abs(left_channel)), max(abs(right_channel)))
         ratio = min(ratio, max_ratio)
-        last_ratio = min(last_ratio, max_ratio)
-        if ratio / last_ratio < 1.1 and ratio / last_ratio > 0.9:
-            ratio = last_ratio
         
         # normalize the left channel and the right channel
-        trans_sample = int(0.002 * sampling_rate)
-        for i in xrange(trans_sample):
-            left_channel[i] *= (last_ratio + (ratio - last_ratio) * i / trans_sample)
-            right_channel[i] *= (last_ratio + (ratio - last_ratio) * i / trans_sample)
-        left_channel[trans_sample:num_samples_mono] *= ratio
-        right_channel[trans_sample:num_samples_mono] *= ratio
+        left_channel *= ratio
+        right_channel *= ratio
+        
+        # add the previous filter results in order to make the transition smooth
+        if left_channel_tail is not None and right_channel_tail is not None:
+            left_channel[:num_samples_tail] += left_channel_tail
+            right_channel[:num_samples_tail] += right_channel_tail
             
         combined_samples = ndarray([num_samples_mono, 2])
         combined_samples[:, 0] = left_channel[:num_samples_mono]
@@ -130,4 +134,20 @@ class Synthesizer:
         # keep the filter tail
         left_channel_tail = array(left_channel[-num_samples_tail:])
         right_channel_tail = array(right_channel[-num_samples_tail:])
-        return raw_audio_string(combined_samples), left_channel_tail, right_channel_tail, ratio
+        return raw_audio_string(combined_samples), left_channel_tail, right_channel_tail
+    
+    @staticmethod
+    def get_ear_filter():
+        sampling_rate = 44100
+        cut_off_1 = 80
+        cut_off_2 = 500
+        cut_off_3 = 5000
+        
+        analog_b_1 = [1, 0]
+        analog_a_1 = [1, float(cut_off_1) / sampling_rate * 2 * pi]
+        analog_a_2 = [1, float(cut_off_2) / sampling_rate * 2 * pi]
+        analog_a_3 = [1, float(cut_off_3) / sampling_rate * 2 * pi]
+        analog_b = poly1d(analog_b_1) ** 3
+        analog_a = (poly1d(analog_a_1) ** 2) * poly1d(analog_a_2) * poly1d(analog_a_3)       
+        (ear_b, ear_a) = bilinear(analog_b, analog_a)
+        return (ear_b, ear_a)

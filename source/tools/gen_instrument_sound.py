@@ -16,6 +16,8 @@ for instrument in range(128):
     synth.noteon(channel, pitch, velocity)
     samples = synth.get_samples(int(duration * sampling_rate))
     synth.noteoff(channel, pitch)
+    tails = synth.get_samples(int(duration * 0.2 * sampling_rate))
+    samples = numpy.append(samples, tails)
     
     synth.sfunload(1)
     synth.delete()

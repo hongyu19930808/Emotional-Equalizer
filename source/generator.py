@@ -69,6 +69,7 @@ class Song:
         if index >= self.num_chord:
             pattern = MIDI.new_pattern()
             pattern.append(Generator.generate_track([], melody_param['tempo'] * self.tempo_multiplier))
+            pattern.append(Generator.generate_track([], melody_param['tempo'] * self.tempo_multiplier))
             pattern.append(Generator.generate_track([], harmony_param['tempo'] * self.tempo_multiplier))
             pattern.append(Generator.generate_track([], harmony_param['tempo'] * self.tempo_multiplier))
         else:
@@ -78,15 +79,13 @@ class Song:
             harmony_annotated_notes = self.generate_harmony(harmony_param, index)
             melody_track = Generator.generate_track(melody_annotated_notes, melody_param['tempo'] * self.tempo_multiplier)
             harmony_track = Generator.generate_track(harmony_annotated_notes, melody_param['tempo'] * self.tempo_multiplier)
-            
-            melody_track_split = MIDI.separate_track(melody_track, num_track = 1)
             harmony_track_split = MIDI.separate_track(harmony_track, num_track = 2)
+            
             pattern = MIDI.new_pattern()
-            for track in melody_track_split:
-                pattern.append(track)
+            pattern.append(melody_track)
+            pattern.append(MIDI.copy_track(melody_track))
             for track in harmony_track_split:
                 pattern.append(track)
-            
         
         # set tonality
         if melody_param['mode'][0] > 0:
