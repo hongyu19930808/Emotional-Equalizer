@@ -5,6 +5,30 @@ class Instrument:
     descriptions = None
     
     @staticmethod
+    def output_descriptions():
+        print 'Not High', '\t', 'Not Low', '\t',
+        for mood in Mood.mood_strs:
+            print mood, '\t',
+        print ''
+        for instrument in Instrument.descriptions:
+            if instrument.has_key('Remark') and (instrument['Remark'] == 'NH'):
+                print '1', '\t',
+            else:
+                print '0', '\t',
+            if instrument.has_key('Remark') and (instrument['Remark'] == 'NL'):
+                print '1', '\t',
+            else:
+                print '0', '\t',            
+            for mood in Mood.mood_strs:
+                if mood in instrument['Is']:
+                    print '2', '\t',
+                elif mood in instrument['Is Not']:
+                    print '0', '\t',
+                else:
+                    print '1', '\t',
+            print ''
+    
+    @staticmethod
     def init():
         Instrument.descriptions = [
             {'Name': 'Acoustic Grand Piano', 'Type': 'Piano', 'ID': 0, 
@@ -488,3 +512,4 @@ class Instrument:
         
 if __name__ == '__main__':
     Instrument.init()
+    Instrument.output_descriptions()

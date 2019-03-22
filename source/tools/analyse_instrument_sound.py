@@ -2,13 +2,17 @@ import wave
 import struct
 import numpy
 import pylab
-import librosa
+import sys
+import scipy.signal
 
 class Instrument(object):
     
     def __init__(self, path = None):
         self._samples = []
         self._frame_rate = 44100
+        self._attack_time = None
+        self._volume_dB = None
+        self._decay_dB = None
         self._abs_fft_results = None
         self._frequency_interval = None
         self._centroid = None
@@ -17,10 +21,71 @@ class Instrument(object):
         self._name = ''
         if path != None:
             self._read_samples(path)
-            self._fft()
+            self._gen_loudness_info()
+            self._cal_decay_dB()
+            self._fft(0, self._attack_time)
             self._calculate_centroid()
             self._calculate_spectrum_std()
             self._calculate_spectrum_percentile()
+            
+    def _gen_loudness_info(self):
+        frame_length = 1024
+        c = numpy.exp(-1.0/frame_length)
+        (ear_b, ear_a) = Instrument.get_ear_filter()
+        ear_filtered_square = scipy.signal.lfilter(ear_b, ear_a, self._samples) ** 2
+        vms = scipy.signal.lfilter([1-c], [1, -c], ear_filtered_square)
+        # calculate attack time
+        local_maximum = []
+        for i in xrange(1, len(vms) - 1):
+            if vms[i] >= vms[i-1] and vms[i] >= vms[i+1]:
+                local_maximum.append(i)
+        max_vms = max(vms)
+        for i in xrange(len(local_maximum)):
+            if vms[local_maximum[i]] <= 0.25 * max_vms:
+                continue
+            attack_flag = True
+            for j in xrange(i+1, len(local_maximum)):
+                if local_maximum[j] - local_maximum[i] > 0.1 * self._frame_rate:
+                    break
+                if vms[local_maximum[i]] < vms[local_maximum[j]]:
+                    attack_flag = False
+                    break
+            if attack_flag == True:
+                self._attack_time = local_maximum[i] / float(self._frame_rate)
+                break
+        # calculate volume
+        self._volume_dB = 10.0 * numpy.log10(vms + sys.float_info.epsilon)
+            
+    def _cal_decay_dB(self):
+        index = len(self._volume_dB) - 1
+        results = [(index + 1) / float(self._frame_rate)] * 61
+        current_decay = 60
+        max_volume = max(self._volume_dB)
+        while index >= 0 and current_decay > sys.float_info.epsilon:
+            if max_volume - self._volume_dB[index] > current_decay:
+                results[current_decay] = index / float(self._frame_rate)
+                index -= 1
+            else:
+                current_decay -= 1
+                results[current_decay] = results[current_decay+1]
+        results[0] = self._volume_dB.argmax() / float(self._frame_rate)
+        self._decay_dB = results
+        
+    @staticmethod
+    def get_ear_filter():
+        sampling_rate = 44100
+        cut_off_1 = 80
+        cut_off_2 = 500
+        cut_off_3 = 5000
+        
+        analog_b_1 = [1, 0]
+        analog_a_1 = [1, float(cut_off_1) / sampling_rate * 2 * numpy.pi]
+        analog_a_2 = [1, float(cut_off_2) / sampling_rate * 2 * numpy.pi]
+        analog_a_3 = [1, float(cut_off_3) / sampling_rate * 2 * numpy.pi]
+        analog_b = numpy.poly1d(analog_b_1) ** 3
+        analog_a = (numpy.poly1d(analog_a_1) ** 2) * numpy.poly1d(analog_a_2) * numpy.poly1d(analog_a_3)       
+        (ear_b, ear_a) = scipy.signal.bilinear(analog_b, analog_a)
+        return (ear_b, ear_a)    
             
     def cumulative_percentage(self, lower_frequency = 0, upper_frequency = 22050):
         if self._abs_fft_results is None or self._frequency_interval is None:
@@ -111,6 +176,7 @@ class Instrument(object):
         start_index = 0 if start_time is None else max(0, int(start_time * self._frame_rate))
         end_index = len(samples) if end_time is None else max(0, int(end_time * self._frame_rate))
         samples = samples[start_index:end_index]
+        samples *= numpy.hamming(end_index - start_index)
         self._abs_fft_results = abs(numpy.fft.rfft(samples)) / len(samples)
         self._frequency_interval = float(self._frame_rate) / len(samples)
     
@@ -125,30 +191,49 @@ class Instrument(object):
             value = struct.unpack('h', left)[0]
             samples[i] = value
         wavefile.close()
-        self._samples = samples / pow(2.0, 15)
+        samples = samples / pow(2.0, 15)
+        self._samples = samples
         self._frame_rate = frame_rate
-        return (self._samples, self._frame_rate)
+        return samples
+    
+    @staticmethod
+    def info():
+        elements = ['Ins ID', 'Centroid (Log)', 'Spectrum Std (Log)', 'Flatness (dB)', 
+                    '50% Percentile (Log)', '85% Percentile (Log)', '50-200', '200-500',
+                    '500-2000', '2000-5000', '5000-20000', 'Attack Time', 
+                    '5dB Decay', '10dB Decay', '15dB Decay', '20dB Decay', '30dB Decay', '40dB Decay']
+        final_str = ''
+        for element in elements[:-1]:
+            final_str += str(element)
+            final_str += ','
+        final_str += str(elements[-1])
+        return final_str        
         
     def __str__(self):
-        # name_str = 'Name: ' + self._name + '\n';
-        # centroid_str = 'Spectrum Centroid: ' + str(round(self._centroid, 2)) + 'Hz' + '\n'
-        # median_str = 'Spectrum Median: ' + str(self._spectrum_percentile[50]) + 'Hz' + '\n'
         elements = []
         elements.append(self._name)
-        elements.append(round(self._centroid, 2))
-        elements.append(round(self._spectrum_std, 2))
+        elements.append(round(numpy.log(self._centroid), 2))
+        elements.append(round(numpy.log(self._spectrum_std), 2))
         elements.append(round(self.spectral_flatness, 2))
-        elements.append(round(self._spectrum_percentile[50], 2))
-        elements.append(round(self._spectrum_percentile[85], 2))
+        elements.append(round(numpy.log(self._spectrum_percentile[50]), 2))
+        elements.append(round(numpy.log(self._spectrum_percentile[85]), 2))
         elements.append(self.cumulative_percentage(50, 200))
         elements.append(self.cumulative_percentage(200, 500))
         elements.append(self.cumulative_percentage(500, 2000))
         elements.append(self.cumulative_percentage(2000, 5000))
         elements.append(self.cumulative_percentage(5000, 20000))
+        elements.append(round(self._attack_time, 4))
+        elements.append(round(self._decay_dB[5], 4))
+        elements.append(round(self._decay_dB[10], 4))
+        elements.append(round(self._decay_dB[15], 4))
+        elements.append(round(self._decay_dB[20], 4))
+        elements.append(round(self._decay_dB[30], 4))
+        elements.append(round(self._decay_dB[40], 4))
         final_str = ''
-        for element in elements:
+        for element in elements[:-1]:
             final_str += str(element)
-            final_str += '\t'
+            final_str += ','
+        final_str += str(elements[-1])
         return final_str
     
     def cmp_by_centroid(self, other):
@@ -192,7 +277,14 @@ class Instrument(object):
         return self._spectrum_percentile
 
 if __name__ == '__main__':
-    for ins_id in xrange(128):
+    #fout = open('instruments_info_spectrum.csv', 'w')
+    #fout.write(Instrument.info() + '\n')
+    num_instruments = 128
+    for ins_id in xrange(num_instruments):
         instrument = Instrument('./sounds/instrument_' + str(ins_id).zfill(3) + '.wav')
         instrument.name = str(ins_id)
-        print instrument
+        #fout.write(str(instrument))
+        #if ins_id < num_instruments - 1:
+            #fout.write('\r\n')
+        #instrument.plot_spectrum(save = True, show = False)
+    #fout.close()

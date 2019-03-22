@@ -5,7 +5,8 @@ import numpy
 channel = 0
 pitch = 60
 velocity = 80
-duration = 1
+duration = 3
+decay_time = 1
 sampling_rate = 44100
 
 for instrument in range(128):
@@ -16,7 +17,7 @@ for instrument in range(128):
     synth.noteon(channel, pitch, velocity)
     samples = synth.get_samples(int(duration * sampling_rate))
     synth.noteoff(channel, pitch)
-    tails = synth.get_samples(int(duration * 0.2 * sampling_rate))
+    tails = synth.get_samples(int(decay_time * sampling_rate))
     samples = numpy.append(samples, tails)
     
     synth.sfunload(1)

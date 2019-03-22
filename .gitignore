@@ -109,3 +109,5 @@ source/cal_frequency_response.py
 source/tools/instruments_info.xlsx
 source/tools/~$instruments_info.xlsx
 *.png
+source/tools/instruments_info_spectrum.csv
+source/tools/instruments_info_all.csv
