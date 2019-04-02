@@ -212,6 +212,8 @@ class MIDI:
                 continue
             
             for track_index in range(len(excerpt)):
+                if track_index >= 3:
+                    break
                 if len(pattern) <= track_index:
                     new_track = Track(tick_relative = False)
                     pattern.append(new_track)
@@ -242,7 +244,7 @@ class MIDI:
                     key_signature.tick = int(excerpt_index * unit * resolution)
                     pattern[track_index].append(key_signature)
                 
-                num_instruments = len(instruments[excerpt_index])
+                num_instruments = min(3, len(instruments[excerpt_index]))
                 current_instrument_id = instruments[excerpt_index][min(track_index, num_instruments - 1)]['ID']
                 if last_index != -1:
                     last_instrument_id = instruments[last_index][min(track_index, num_instruments - 1)]['ID']

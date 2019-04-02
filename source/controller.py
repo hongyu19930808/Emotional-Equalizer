@@ -9,13 +9,13 @@ from time import sleep, time
 from impromptu import Impromptu
 from random import randint
 from ui_equalizer import EqualizerUI
+from midi import NoteOffEvent
 
 class Controller:
     def __init__(self, gui):
         self.gui = gui
         self.song = None
         self.inpromptu = None
-        self.digital_filter = {'b': [1], 'a': [1]}
         
         # used by several threads
         self.composition_mutex = Lock()
@@ -116,9 +116,6 @@ class Controller:
         self.tonalities = {}
         self.instruments = {}
         self.removed_event = {}
-        left_channel_tail = None
-        right_channel_tail = None
-        last_ratio = 1
         
         while True:
             if self.get_status() == 'stop':
@@ -150,14 +147,15 @@ class Controller:
                 self.tonalities[next_index] = tonality
                 self.instruments[next_index] = instruments
                 
-                value = max(local_mood['Angry'], local_mood['Scary'], local_mood['Comic'], local_mood['Happy']) - \
+                brightness_param = max(local_mood['Angry'], local_mood['Scary']) - \
                     max(local_mood['Sad'], local_mood['Mysterious'], local_mood['Romantic'], local_mood['Calm'])
-                value /= 100.0;
-                self.digital_filter = EqualizerUI.cal_spectral_tilt(value)
+                brightness_param /= 100.0;
+                self.synth.digital_filter = EqualizerUI.cal_spectral_tilt(brightness_param)
+                overdriven_param = max(local_mood['Angry'], local_mood['Scary'], 50) / 250.0 - 0.2
+                self.synth.overdriven_coeff = 1 - overdriven_param
                 
-                (samples, left_channel_tail, right_channel_tail) = self.synth.convert_pattern_to_samples(
-                    pattern, instruments, unit, self.digital_filter, 
-                    left_channel_tail, right_channel_tail, dynamic_offset)
+                samples = self.synth.convert_pattern_to_samples(
+                    pattern, instruments, unit, dynamic_offset)
                 
                 self.composition_mutex.acquire()
                 self.next_samples = samples
@@ -217,8 +215,6 @@ class Controller:
         self.tonalities = {}
         self.instruments = {}
         self.inpromptu = Impromptu(unit, offset)
-        left_channel_tail = None
-        right_channel_tail = None
         
         while True:
             if self.get_status() == 'stop':
@@ -235,9 +231,8 @@ class Controller:
                 self.patterns[next_index] = pattern
                 self.tonalities[next_index] = tonality
                 self.instruments[next_index] = instruments
-                (samples, left_channel_tail, right_channel_tail) = self.synth.convert_pattern_to_samples(
-                    pattern, instruments, unit, self.digital_filter, 
-                    left_channel_tail, right_channel_tail, dynamic_offset)          
+                samples = self.synth.convert_pattern_to_samples(
+                    pattern, instruments, unit, dynamic_offset)          
                 
                 self.composition_mutex.acquire()
                 self.next_samples = samples

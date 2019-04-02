@@ -53,8 +53,9 @@ class Effect:
             else:
                 notes.append(Note(pitch = note.pitch, start = note.start, duration = note.duration * ratio, 
                                   dynamic = note.dynamic + loudness, channel = note.channel))
-                notes.append(Note(pitch = 0, start = note.start + note.duration * ratio, 
-                                  duration = note.duration * (1 - ratio), dynamic = 0, channel = note.channel))
+                if ratio < 1:
+                    notes.append(Note(pitch = 0, start = note.start + note.duration * ratio, 
+                                      duration = note.duration * (1 - ratio), dynamic = 0, channel = note.channel))
         tonality = {'key': tonality['key'], 'mode': tonality['mode']}
         return (Analyzer.annotate_notes(notes, tonality), tonality)              
     

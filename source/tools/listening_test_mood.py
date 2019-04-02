@@ -17,7 +17,7 @@ email = 'yhongag'
 gender = Gender.Male
 age = 25
 
-start_session = 2
+start_session = 3
 num_session = 1
 
 # global variables

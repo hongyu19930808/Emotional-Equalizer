@@ -1,7 +1,7 @@
 from midi_operation import MIDI
 from fluidsynth import Synth, raw_audio_string
 from midi import Track, NoteOnEvent, NoteOffEvent
-from numpy import append, array, ndarray, poly1d, exp, log10, sqrt, mean, pi
+from numpy import append, array, ndarray, poly1d, exp, log10, sqrt, mean, pi, minimum, maximum
 from generator import Generator
 from thread import start_new_thread
 from time import sleep
@@ -11,14 +11,20 @@ class Synthesizer:
     
     def __init__(self):
         self.status = False
+        self.last_instruments = []
+        self.trans = 0
+        self.last_ratio = 1.0
+        self.left_channel_tail = None
+        self.right_right_tail = None
+        self.digital_filter = {'b': [1], 'a': [1]}
+        self.overdriven_coeff = 1.0
         start_new_thread(self.init_background, ())
         (Synthesizer.ear_b, Synthesizer.ear_a) = Synthesizer.get_ear_filter()
         
     def init_background(self):
         self.synths = []
         self.sfids = []
-        self.last_instruments = []
-        for i in range(4):
+        for i in range(6):
             synth = Synth()
             self.synths.append(synth)
             self.sfids.append(synth.sfload("/Users/hongyu/SoundFonts/timbres of heaven.sf2"))
@@ -37,10 +43,14 @@ class Synthesizer:
         for synth in self.synths:
             synth.system_reset()
         self.last_instruments = []
+        self.trans = 0
+        self.last_ratio = 1.0
+        self.left_channel_tail = None
+        self.right_right_tail = None
+        self.digital_filter = {'b': [1], 'a': [1]}
+        self.overdriven_coeff = 1.0
 
-    def convert_pattern_to_samples(self, pattern, instruments, unit, digital_filter,
-                                   left_channel_tail = None, right_channel_tail = None, 
-                                   dynamic_offset = 0):        
+    def convert_pattern_to_samples(self, pattern, instruments, unit, dynamic_offset = 0):        
         while self.status == False:
             sleep(0.01)
         
@@ -48,18 +58,41 @@ class Synthesizer:
         tempo = pattern[0][0].get_bpm()
         sampling_rate = 44100.0
         array_length = int(unit * 60.0 / tempo * sampling_rate)
+        digital_filter = self.digital_filter
         
-        if len(instruments) >= 4:
-            if len(self.last_instruments) >= 4:
-                instrument_ids = [ins['ID'] for ins in [instruments[0], self.last_instruments[0], instruments[1], self.last_instruments[1]]]
-                # gradually change
-                if len(set(instrument_ids)) >= 4:
-                    instruments[1] = instruments[0]
-                    instruments[0] = self.last_instruments[1]
-            self.last_instruments = [instruments[0], instruments[1], instruments[2], instruments[3]]
-            print 'Melody: ' + instruments[0]['Name'] + ', ' + instruments[1]['Name']
-            print 'Harmony: ' + instruments[2]['Name'] + ', ' + instruments[3]['Name']
-            print ''
+        if len(instruments) < 3:
+            print 'error in loading instruments'
+            
+        if len(self.last_instruments) != 0 and \
+           ((self.last_instruments[0]['ID'] != instruments[0]['ID']) or \
+           (self.last_instruments[1]['ID'] != instruments[1]['ID']) or \
+           (self.last_instruments[2]['ID'] != instruments[2]['ID'])):
+            instruments.append(self.last_instruments[0])
+            instruments.append(self.last_instruments[1])
+            instruments.append(self.last_instruments[2])
+            pattern.append(MIDI.copy_track(pattern[0], channel_offset = 3))
+            pattern.append(MIDI.copy_track(pattern[1], channel_offset = 3))
+            pattern.append(MIDI.copy_track(pattern[2], channel_offset = 3))
+            
+            # whether in transition state or not, 0 is not a transition state
+            if self.trans == 0:
+                self.trans = 4
+        
+        if self.trans > 0:
+            self.trans -= 1
+        if self.trans <= 0:
+            if len(self.last_instruments) == 0:
+                self.last_instruments.append(instruments[0])
+                self.last_instruments.append(instruments[1])
+                self.last_instruments.append(instruments[2])
+            else:
+                self.last_instruments[0] = instruments[0]
+                self.last_instruments[1] = instruments[1]
+                self.last_instruments[2] = instruments[2]
+        
+        print 'Melody: ' + instruments[0]['Name']
+        print 'Harmony: ' + instruments[1]['Name'] + ', ' + instruments[2]['Name']
+        print ''
         
         for i in range(min(len(instruments), len(self.synths))):
             self.synths[i].program_select(i, self.sfids[i], 0, instruments[i]['ID'])
@@ -82,18 +115,38 @@ class Synthesizer:
             samples.append(sample)
                 
         # combine different instruments
-        samples[0] *= 1.0 / pow(2, 0.5)
-        samples[1] *= 1.0 / pow(2, 0.5)
-        combined_samples = samples[0]
-        for i in range(1, len(samples)):
-            combined_samples += samples[i]
+        len_trans = float(array_length * 2)
+        if len(instruments) == 6:
+            coeff_fade_in = array(xrange(int(len_trans)))
+            coeff_fade_in = coeff_fade_in / (len_trans * 4) + (3 - self.trans) / 4.0
+            coeff_fade_out = array(xrange(int(len_trans), 0, -1))
+            coeff_fade_out = coeff_fade_out / (len_trans * 4) + self.trans / 4.0
+            # avoid suddenly coefficient change from 1 to 0
+            if self.trans == 3:
+                len_trans = int(sampling_rate * 0.005 * 2)
+                for i in xrange(len_trans):
+                    coeff_fade_in[i] = 1.0 - i / float(len_trans)
+                    coeff_fade_out[i] = i / float(len_trans)
+            samples[0] = samples[0] * coeff_fade_in + samples[3] * coeff_fade_out
+            samples[1] = samples[1] * coeff_fade_in + samples[4] * coeff_fade_out
+            samples[2] = samples[2] * coeff_fade_in + samples[5] * coeff_fade_out
+        combined_samples = samples[0] + samples[1] + samples[2]
+        
+        if self.trans <= 0:
+            self.synths[3].system_reset()
+            self.synths[4].system_reset()
+            self.synths[5].system_reset()        
         
         # filter
         num_samples_mono = len(combined_samples) / 2
         num_samples_tail = int(sampling_rate * 0.1)
         reshaped_samples = combined_samples.reshape(num_samples_mono, 2)
-        left_channel = list(reshaped_samples[:, 0]) + [0] * num_samples_tail
-        right_channel = list(reshaped_samples[:, 1]) + [0] * num_samples_tail
+        left_channel = array(list(reshaped_samples[:, 0]) + [0] * num_samples_tail)
+        right_channel = array(list(reshaped_samples[:, 1]) + [0] * num_samples_tail)
+        if self.overdriven_coeff < 1:
+            max_amp = max(max(abs(left_channel)), max(abs(right_channel)))
+            left_channel = minimum(left_channel, max_amp * self.overdriven_coeff)
+            right_channel = minimum(right_channel, max_amp * self.overdriven_coeff)
         left_channel = lfilter(digital_filter['b'], digital_filter['a'], left_channel)
         right_channel = lfilter(digital_filter['b'], digital_filter['a'], right_channel)
         
@@ -116,15 +169,25 @@ class Synthesizer:
         ratio = sqrt(pow(10, (desired_volume - original_volume) / 10.0))
         max_ratio = (pow(2.0, 15) - 1) / max(max(abs(left_channel)), max(abs(right_channel)))
         ratio = min(ratio, max_ratio)
+        if ratio / self.last_ratio > 0.9 and ratio / self.last_ratio < 1.1:
+            ratio = self.last_ratio
         
         # normalize the left channel and the right channel
-        left_channel *= ratio
-        right_channel *= ratio
+        len_trans = 100
+        trans_ratio = [ratio * i / 100.0 + self.last_ratio * (100 - i) / 100.0 for i in xrange(len_trans)]
+        left_channel[:len_trans] *= trans_ratio
+        right_channel[:len_trans] *= trans_ratio
+        left_channel[:len_trans] = maximum(minimum(left_channel[:100], pow(2.0, 15) - 1), -pow(2.0, 15) + 1)
+        left_channel[:len_trans] = maximum(minimum(left_channel[:100], pow(2.0, 15) - 1), -pow(2.0, 15) + 1)
+        left_channel[len_trans:] *= ratio
+        right_channel[len_trans:] *= ratio
+        
+        self.last_ratio = ratio
         
         # add the previous filter results in order to make the transition smooth
-        if left_channel_tail is not None and right_channel_tail is not None:
-            left_channel[:num_samples_tail] += left_channel_tail
-            right_channel[:num_samples_tail] += right_channel_tail
+        if self.left_channel_tail is not None and self.right_channel_tail is not None:
+            left_channel[:num_samples_tail] += self.left_channel_tail
+            right_channel[:num_samples_tail] += self.right_channel_tail
             
         combined_samples = ndarray([num_samples_mono, 2])
         combined_samples[:, 0] = left_channel[:num_samples_mono]
@@ -132,9 +195,9 @@ class Synthesizer:
         combined_samples = combined_samples.flatten()
         
         # keep the filter tail
-        left_channel_tail = array(left_channel[-num_samples_tail:])
-        right_channel_tail = array(right_channel[-num_samples_tail:])
-        return raw_audio_string(combined_samples), left_channel_tail, right_channel_tail
+        self.left_channel_tail = array(left_channel[-num_samples_tail:])
+        self.right_channel_tail = array(right_channel[-num_samples_tail:])
+        return raw_audio_string(combined_samples)
     
     @staticmethod
     def get_ear_filter():

@@ -83,7 +83,6 @@ class Song:
             
             pattern = MIDI.new_pattern()
             pattern.append(melody_track)
-            pattern.append(MIDI.copy_track(melody_track))
             for track in harmony_track_split:
                 pattern.append(track)
         
@@ -349,6 +348,13 @@ class Generator:
         if mood[Mood.Comic] > 50 and track_type == 'melody':
             param['staccato'] = min(1, (150 - mood[Mood.Comic]) * (150 - mood[Mood.Comic]) * 0.0001)
             param['ornament'] = (mood[Mood.Comic] > 75)
+        max_low_arousal = max(mood[Mood.Sad], mood[Mood.Mysterious], mood[Mood.Romantic], mood[Mood.Calm])    
+        if max_low_arousal > 50:
+            if not param.has_key('staccato'): 
+                param['staccato'] = 1 + 0.004 * (max_low_arousal - 50)
+            else:
+                param['staccato'] += 0.004 * (max_low_arousal - 50)
+            param['staccato'] = min(1.12, param['staccato'])
         return param
     
     @staticmethod

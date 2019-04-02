@@ -1,11 +1,12 @@
 from mood import Mood
+from os import listdir
 
 class Instrument:
     
     descriptions = None
     
     @staticmethod
-    def output_descriptions():
+    def output_remark_mood():
         print 'Not High', '\t', 'Not Low', '\t',
         for mood in Mood.mood_strs:
             print mood, '\t',
@@ -27,9 +28,125 @@ class Instrument:
                 else:
                     print '1', '\t',
             print ''
+
+    @staticmethod
+    def output_name_remark():
+        for instrument in Instrument.descriptions:
+            if instrument.has_key('Remark'):
+                print instrument['Name'] + '\t' + instrument['Remark']
+            else:
+                print instrument['Name']
+    
+    @staticmethod        
+    def init():
+        # read listening test results
+        instrument_moods = {i: {} for i in xrange(128)}
+        instrument_count = {i: 0 for i in xrange(128)}
+        files = listdir('./tools/moods/')
+        for file_name in files:
+            if file_name.endswith('.csv'):
+                fin = open('./tools/moods/' + file_name, 'r')
+                fin.readline()
+                while True:
+                    line = fin.readline().strip('\r\n')
+                    if line == '':
+                        break
+                    elements = line.split(',')
+                    ins_num = int(elements[0][4:])
+                    instrument_count[ins_num] += 1
+                    for i in xrange(len(Mood.mood_strs)):
+                        mood = Mood.mood_strs[i]
+                        if instrument_moods[ins_num].has_key(mood):
+                            instrument_moods[ins_num][mood] += int(elements[i+1])
+                        else:
+                            instrument_moods[ins_num][mood] = int(elements[i+1])
+                fin.close()
+        
+        # read meta info
+        instrument_name = []
+        instrument_remark = []
+        fin = open('./tools/instruments_meta_info.csv', 'r')
+        while True:
+            line = fin.readline().strip('\r\n')
+            if line == '':
+                break
+            elements = line.split(',')
+            instrument_name.append(elements[1])
+            instrument_remark.append(elements[2])
+        fin.close()
+        
+        # average the subjects' responses
+        Instrument.descriptions = []
+        for i in xrange(128):
+            info = {}
+            for mood in Mood.mood_strs:
+                if instrument_count[i] != 0:
+                    info[mood] = float(instrument_moods[i][mood]) / float(instrument_count[i])
+                else:
+                    info[mood] = 0.0
+            info['ID'] = i
+            info['Name'] = instrument_name[i]
+            if instrument_remark[i] != '':
+                info['Remark'] = instrument_remark[i]
+            Instrument.descriptions.append(info)
     
     @staticmethod
-    def init():
+    def get_instruments(mood, seed):
+        len_pick = 12
+        threshold = 49.5
+        scores = [{'index': i, 'score': 0} for i in range(len(Instrument.descriptions))]
+        for i in xrange(len(Instrument.descriptions)):
+            for mood_str in mood.keys():
+                score = Instrument.descriptions[i][mood_str] - 1
+                scores[i]['score'] += (score * (mood[mood_str] - threshold))
+        scores.sort(cmp = Instrument.cmp_instruments_score, reverse = True)
+        
+        picked = []
+        for i in xrange(len_pick):
+            score = scores[i]
+            index = score['index']
+            picked.append(Instrument.descriptions[index])
+        
+        index_offset = 0
+        result = []
+        
+        # melody instrument 1
+        index = (seed + index_offset) % len_pick
+        while index_offset < len_pick and picked[index].has_key('Remark') and picked[index]['Remark'] == 'NH':
+            index_offset += 1
+            index = (seed + index_offset) % len_pick
+        result.append(picked[index])
+        index_offset += 1
+        
+        # harmony instrument 1
+        index = (seed + index_offset) % len_pick
+        while index_offset < len_pick and picked[index].has_key('Remark') and picked[index]['Remark'] == 'NL':
+            index_offset += 1
+            index = (seed + index_offset) % len_pick
+        result.append(picked[index])
+        index_offset += 1
+        
+        # harmony instrument 2
+        index = (seed + index_offset) % len_pick
+        while index_offset < len_pick and picked[index].has_key('Remark') and picked[index]['Remark'] == 'NL':
+            index_offset += 1
+            index = (seed + index_offset) % len_pick
+        result.append(picked[index])
+        index_offset += 1
+        
+        return (result, index_offset - 3)
+    
+    @staticmethod            
+    def cmp_instruments_score(score_1, score_2):
+        if score_1['score'] > score_2['score']:
+            return 1
+        if score_1['score'] == score_2['score']:
+            return 0
+        if score_1['score'] < score_2['score']:
+            return -1
+        
+    @staticmethod
+    def init_old_version():
         Instrument.descriptions = [
             {'Name': 'Acoustic Grand Piano', 'Type': 'Piano', 'ID': 0, 
              'Is': [Mood.Romantic, Mood.Calm], 
@@ -416,100 +533,8 @@ class Instrument:
              'Is': [Mood.Angry], 
              'Is Not': [Mood.Scary, Mood.Comic, Mood.Happy, Mood.Sad, Mood.Mysterious, Mood.Romantic, Mood.Calm]}
         ]
-    
-    @staticmethod
-    def get_instruments(mood, seed):
-        len_pick = 16
-        baseline = 0
-        threshold = 50
-        while True:
-            for mood_str in mood.keys():
-                value = max(0, mood[mood_str] - threshold)
-                baseline += value
-            if baseline == 0:
-                threshold -= 1
-            else:
-                break
-        scores = [{'index': i, 'score': 0} for i in range(len(Instrument.descriptions))]
-        for i in range(len(Instrument.descriptions)):
-            for mood_str in mood.keys():
-                score = 1
-                if mood_str in Instrument.descriptions[i]['Is']:
-                    score = 2
-                if mood_str in Instrument.descriptions[i]['Is Not']:
-                    score = 0
-                scores[i]['score'] += (score * max(0, mood[mood_str] - threshold))
-        scores.sort(cmp = Instrument.cmp_instruments_score, reverse = True)
-        
-        picked = []
-        current_score = scores[0]['score']
-        for score in scores:
-            if score['score'] > baseline \
-               or score['score'] == current_score \
-               or len(picked) < len_pick:
-                index = score['index']
-                picked.append(Instrument.descriptions[index])
-            else:
-                break
-            current_score = score['score']
-        
-        index_offset = 0
-        result = []
-        # melody instrument 1
-        while index_offset < len_pick:
-            index = (seed + index_offset) % len(picked)
-            if picked[index].has_key('Remark') and picked[index]['Remark'] == 'NH':
-                index_offset += 1
-                continue
-            else:
-                result.append(picked[index])
-                index_offset += 1
-                break
-        # melody instrument 2
-        while index_offset < len_pick:
-            index = (seed + index_offset) % len(picked)
-            if picked[index].has_key('Remark') and picked[index]['Remark'] == 'NH':
-                index_offset += 1
-                continue
-            else:
-                result.append(picked[index])
-                index_offset += 1
-                break
-        # harmony instrument 1
-        while index_offset < len_pick:
-            index = (seed + index_offset) % len(picked)
-            if picked[index].has_key('Remark') and picked[index]['Remark'] == 'NL':
-                index_offset += 1
-                continue
-            else:
-                result.append(picked[index])
-                index_offset += 1
-                break
-        # harmony instrument 2
-        while index_offset < len_pick:
-            index = (seed + index_offset) % len(picked)
-            if picked[index].has_key('Remark') and picked[index]['Remark'] == 'NL':
-                index_offset += 1
-                continue
-            else:
-                result.append(picked[index])
-                index_offset += 1
-                break        
-        while len(result) < 4:
-            index = (seed + index_offset) % len(picked)
-            result.append(picked[index])
-            index_offset += 1
-        return (result, index_offset - 4)
-    
-    @staticmethod            
-    def cmp_instruments_score(score_1, score_2):
-        if score_1['score'] > score_2['score']:
-            return 1
-        if score_1['score'] == score_2['score']:
-            return 0
-        if score_1['score'] < score_2['score']:
-            return -1
         
 if __name__ == '__main__':
     Instrument.init()
-    Instrument.output_descriptions()
+    # Instrument.init_old_version()
+    # Instrument.output_name_remark()

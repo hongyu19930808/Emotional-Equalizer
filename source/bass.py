@@ -273,7 +273,7 @@ class Bass:
                                       start = start_time + configures['note_start'][j] * configures['harmony_length'], 
                                       duration = configures['harmony_length'] * configures['note_duration'][j], 
                                       dynamic = configures['dynamic'] + configures['note_dynamic_shift'][j],
-                                      channel = configures['note_channel'][j] + 1
+                                      channel = configures['note_channel'][j]
                                       ))
         
         start_time = (annotated_important_notes[-1]['note'].start / configures['harmony_length']) * configures['harmony_length']
@@ -303,7 +303,7 @@ class Bass:
         notes = []
         for i in range(len(pitches)):
             pitch = pitches[i]
-            channel = channels[i] + 1
+            channel = channels[i]
             notes.append(Note(pitch = pitch,
                               start = start_time, 
                               duration = harmony_length, 
