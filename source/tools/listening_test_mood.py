@@ -7,17 +7,37 @@ from thread import start_new_thread
 from fluidsynth import raw_audio_string
 from random import shuffle
 from time import sleep
+from os import path
+import os, sys
 
 class Gender:
     Male = 'male'
     Female = 'female'
-
-# settings
-email = 'yhongag'
-gender = Gender.Male
-age = 25
-
-start_session = 3
+    
+email = raw_input('email:\n')
+while True:
+    gender_str = raw_input('gender: male/female\n')
+    if gender_str.lower() == 'male' or gender_str.lower() == 'm':
+        gender = Gender.Male
+        break
+    elif gender_str.lower() == 'female' or gender_str.lower() == 'fe':
+        gender = Gender.Female
+        break
+    else:
+        continue
+while True:
+    try:
+        age = int(raw_input('age:\n'))
+        break
+    except:
+        continue
+while True:
+    try:
+        start_session = int(raw_input('session: 0/1/2/3\n'))
+        if start_session in [0, 1, 2, 3]:
+            break
+    except:
+        continue
 num_session = 1
 
 # global variables
@@ -36,7 +56,7 @@ shuffle(mood_strs)
 root = tk.Tk()
 frame = tk.Frame(master = root)
 labels = tk.Frame(master = frame)
-question_label_1 = tk.Label(master = labels, font = ('Arial', 30), text = 'Is the mood of the sound')
+question_label_1 = tk.Label(master = labels, font = ('Arial', 30), text = 'Is the mood of the excerpt')
 question_label_2 = tk.Label(master = labels, font = ('Arial', 30), foreground = 'red', text = mood_strs[0])
 question_label_3 = tk.Label(master = labels, font = ('Arial', 30), text = '?')
 
@@ -63,7 +83,7 @@ def button_repeat_clicked():
         global repeat_flag
         repeat_flag = True
         
-button_no = tk.Button(master = frame, text = 'Not at all (Press 1)', font = ('Arial', 20),
+button_no = tk.Button(master = frame, text = 'Definitely Not (Press 1)', font = ('Arial', 20),
                       command = button_no_clicked)
 button_maybe = tk.Button(master = frame, text = 'Somewhat (Press 2)', font = ('Arial', 20),
                          command = button_maybe_clicked)
@@ -139,9 +159,10 @@ def read_samples():
     if current_excerpt_index >= len(all_excerpts):
         return None
     instrument_index = str(all_excerpts[current_excerpt_index]).zfill(3)
-    path = './sounds/instrument_' + instrument_index + '.wav'
+    file_name = 'instrument_' + instrument_index + '.wav'
+    path_str = path.join(path.expanduser('~'), 'Desktop', 'Test', 'sounds', file_name)
     print 'current instrument: ' + str(instrument_index)
-    wavefile = wave.open(path, 'r')
+    wavefile = wave.open(path_str, 'r')
     num_frames = wavefile.getnframes()
     frame_rate = wavefile.getframerate()
     samples = numpy.zeros(num_frames)
@@ -164,7 +185,9 @@ def output():
     for i in xrange(num_session):
         file_name += '-s'
         file_name += str(start_session + i)
-    fout = open('./moods/' + file_name + '.csv', 'w')
+    file_name += '.csv'
+    path_str = path.join(path.expanduser('~'), 'Desktop', 'Test', file_name)
+    fout = open(path_str, 'w')
     all_excerpts.sort()
     mood_strs = ['Angry', 'Scary', 'Comic', 'Happy', 'Sad', 'Mysterious', 'Romantic', 'Calm']
     for mood in mood_strs:
@@ -223,9 +246,10 @@ def key_press_event(event):
         button_repeat_clicked()
 
 def main():
+    
     root.title('Listening Test')
     root.bind(sequence = '<KeyPress>', func = key_press_event)
-    frame.grid(padx = 420, pady = 360)
+    frame.grid(padx = 32, pady = 16)
     labels.grid(row = 0, column = 0, columnspan = 3)
     question_label_1.grid(row = 0, column = 0)
     question_label_2.grid(row = 0, column = 1)
@@ -237,7 +261,7 @@ def main():
     button_maybe.grid(row = 2, column = 1)
     button_yes.grid(row = 2, column = 2)
     tk.Label(master = frame, text = ' ', font = ('Arial', 12)).grid(row = 3, column = 0, columnspan = 3)
-    button_repeat.grid(row = 4, column = 0, columnspan = 3)
+    button_repeat.grid(row = 4, column = 1)
     disable_button()
     
     start_new_thread(play_excerpt, ())    
@@ -249,6 +273,5 @@ def main():
     root.mainloop()
 
 if __name__ == '__main__':
+    os.chdir(sys.path[0])
     main()
-
-

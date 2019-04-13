@@ -114,6 +114,7 @@ class Synthesizer:
                 sample = append(sample, self.synths[i].get_samples(array_length - len(sample) / 2))
             samples.append(sample)
                 
+        
         # combine different instruments
         len_trans = float(array_length * 2)
         if len(instruments) == 6:
@@ -121,16 +122,30 @@ class Synthesizer:
             coeff_fade_in = coeff_fade_in / (len_trans * 4) + (3 - self.trans) / 4.0
             coeff_fade_out = array(xrange(int(len_trans), 0, -1))
             coeff_fade_out = coeff_fade_out / (len_trans * 4) + self.trans / 4.0
+            
+            amp_left_init = []
+            amp_right_init = []
+            for i in xrange(3):
+                amp_left_init.append(samples[i][0])
+                amp_right_init.append(samples[i][1])
+            
+            samples[0] = samples[0] * coeff_fade_in
+            samples[1] = samples[1] * coeff_fade_in
+            samples[2] = samples[2] * coeff_fade_in
+            
             # avoid suddenly coefficient change from 1 to 0
             if self.trans == 3:
-                len_trans = int(sampling_rate * 0.005 * 2)
-                for i in xrange(len_trans):
-                    coeff_fade_in[i] = 1.0 - i / float(len_trans)
-                    coeff_fade_out[i] = i / float(len_trans)
-            samples[0] = samples[0] * coeff_fade_in + samples[3] * coeff_fade_out
-            samples[1] = samples[1] * coeff_fade_in + samples[4] * coeff_fade_out
-            samples[2] = samples[2] * coeff_fade_in + samples[5] * coeff_fade_out
+                smooth_wave_trans = int(sampling_rate * 0.01)
+                for i in xrange(3):
+                    for j in xrange(smooth_wave_trans):
+                        samples[i][j*2] = (1.0 - j / float(smooth_wave_trans)) * amp_left_init[i]
+                        samples[i][j*2+1] = (1.0 - j / float(smooth_wave_trans)) * amp_right_init[i]
+            
+            samples[0] += samples[3] * coeff_fade_out
+            samples[1] += samples[4] * coeff_fade_out
+            samples[2] += samples[5] * coeff_fade_out
         combined_samples = samples[0] + samples[1] + samples[2]
+        
         
         if self.trans <= 0:
             self.synths[3].system_reset()
@@ -143,6 +158,7 @@ class Synthesizer:
         reshaped_samples = combined_samples.reshape(num_samples_mono, 2)
         left_channel = array(list(reshaped_samples[:, 0]) + [0] * num_samples_tail)
         right_channel = array(list(reshaped_samples[:, 1]) + [0] * num_samples_tail)
+        
         if self.overdriven_coeff < 1:
             max_amp = max(max(abs(left_channel)), max(abs(right_channel)))
             left_channel = minimum(left_channel, max_amp * self.overdriven_coeff)
