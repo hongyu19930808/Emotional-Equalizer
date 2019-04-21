@@ -98,11 +98,12 @@ ENV/
 # mypy
 .mypy_cache/
 .DS_Store
-midi/要下载的测试曲目.jpg
+
 *.wav
-source/tools/instruments_info.xlsx
 *.png
 source/tools/instruments_info_spectrum.csv
 source/tools/instruments_info_all.csv
+source/tools/instruments_meta_info.csv
 source/demo.mid
 app/app.zip
+midi/要下载的测试曲目.jpg
