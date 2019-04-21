@@ -332,6 +332,7 @@ class Controller:
             if play_thread_locked == False:
                 start_new_thread(self.impromptu_play, ())
         """
+        
     
     def stop(self):        
         self.composition_mutex.acquire()

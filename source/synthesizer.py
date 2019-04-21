@@ -1,7 +1,7 @@
 from midi_operation import MIDI
 from fluidsynth import Synth, raw_audio_string
 from midi import Track, NoteOnEvent, NoteOffEvent
-from numpy import append, array, ndarray, poly1d, exp, log10, sqrt, mean, pi, minimum, maximum
+from numpy import append, array, ndarray, poly1d, exp, log10, sqrt, mean, pi, minimum, maximum, cos
 from generator import Generator
 from thread import start_new_thread
 from time import sleep
@@ -63,6 +63,7 @@ class Synthesizer:
         if len(instruments) < 3:
             print 'error in loading instruments'
             
+        num_bars_trans = 4
         if len(self.last_instruments) != 0 and \
            ((self.last_instruments[0]['ID'] != instruments[0]['ID']) or \
            (self.last_instruments[1]['ID'] != instruments[1]['ID']) or \
@@ -73,10 +74,10 @@ class Synthesizer:
             pattern.append(MIDI.copy_track(pattern[0], channel_offset = 3))
             pattern.append(MIDI.copy_track(pattern[1], channel_offset = 3))
             pattern.append(MIDI.copy_track(pattern[2], channel_offset = 3))
-            
+        
             # whether in transition state or not, 0 is not a transition state
             if self.trans == 0:
-                self.trans = 4
+                self.trans = num_bars_trans
         
         if self.trans > 0:
             self.trans -= 1
@@ -117,34 +118,28 @@ class Synthesizer:
         
         # combine different instruments
         len_trans = float(array_length * 2)
+        len_smooth_trans = 16.0
+        smooth_dec = [(cos(i * pi / len_smooth_trans) + 1) / 2.0 for i in xrange(int(len_smooth_trans))]
+        smooth_inc = [(-cos(i * pi / len_smooth_trans) + 1) / 2.0 for i in xrange(int(len_smooth_trans))]
         if len(instruments) == 6:
             coeff_fade_in = array(xrange(int(len_trans)))
-            coeff_fade_in = coeff_fade_in / (len_trans * 4) + (3 - self.trans) / 4.0
+            coeff_fade_in = coeff_fade_in / (len_trans * num_bars_trans) + (num_bars_trans - 1 - self.trans) / 4.0
             coeff_fade_out = array(xrange(int(len_trans), 0, -1))
-            coeff_fade_out = coeff_fade_out / (len_trans * 4) + self.trans / 4.0
+            coeff_fade_out = coeff_fade_out / (len_trans * num_bars_trans) + self.trans / 4.0
+            # avoid the signal suddenly change
+            if self.trans == num_bars_trans - 1:
+                coeff_fade_out[:len(smooth_inc)] = smooth_inc
+                coeff_fade_in[:len(smooth_dec)] = smooth_dec
             
-            amp_left_init = []
-            amp_right_init = []
-            for i in xrange(3):
-                amp_left_init.append(samples[i][0])
-                amp_right_init.append(samples[i][1])
-            
-            samples[0] = samples[0] * coeff_fade_in
-            samples[1] = samples[1] * coeff_fade_in
-            samples[2] = samples[2] * coeff_fade_in
-            
-            # avoid suddenly coefficient change from 1 to 0
-            if self.trans == 3:
-                smooth_wave_trans = int(sampling_rate * 0.01)
-                for i in xrange(3):
-                    for j in xrange(smooth_wave_trans):
-                        samples[i][j*2] = (1.0 - j / float(smooth_wave_trans)) * amp_left_init[i]
-                        samples[i][j*2+1] = (1.0 - j / float(smooth_wave_trans)) * amp_right_init[i]
-            
-            samples[0] += samples[3] * coeff_fade_out
-            samples[1] += samples[4] * coeff_fade_out
-            samples[2] += samples[5] * coeff_fade_out
-        combined_samples = samples[0] + samples[1] + samples[2]
+            samples[0] *= coeff_fade_in
+            samples[1] *= coeff_fade_in
+            samples[2] *= coeff_fade_in            
+            samples[3] *= coeff_fade_out
+            samples[4] *= coeff_fade_out
+            samples[5] *= coeff_fade_out
+            combined_samples = samples[0] + samples[1] + samples[2] + samples[3] + samples[4] + samples[5]
+        else:
+            combined_samples = samples[0] + samples[1] + samples[2]
         
         
         if self.trans <= 0:
@@ -185,18 +180,17 @@ class Synthesizer:
         ratio = sqrt(pow(10, (desired_volume - original_volume) / 10.0))
         max_ratio = (pow(2.0, 15) - 1) / max(max(abs(left_channel)), max(abs(right_channel)))
         ratio = min(ratio, max_ratio)
-        if ratio / self.last_ratio > 0.9 and ratio / self.last_ratio < 1.1:
-            ratio = self.last_ratio
+        #if ratio / self.last_ratio > 0.9 and ratio / self.last_ratio < 1.1:
+            #ratio = self.last_ratio
         
         # normalize the left channel and the right channel
-        len_trans = 100
-        trans_ratio = [ratio * i / 100.0 + self.last_ratio * (100 - i) / 100.0 for i in xrange(len_trans)]
-        left_channel[:len_trans] *= trans_ratio
-        right_channel[:len_trans] *= trans_ratio
-        left_channel[:len_trans] = maximum(minimum(left_channel[:100], pow(2.0, 15) - 1), -pow(2.0, 15) + 1)
-        left_channel[:len_trans] = maximum(minimum(left_channel[:100], pow(2.0, 15) - 1), -pow(2.0, 15) + 1)
-        left_channel[len_trans:] *= ratio
-        right_channel[len_trans:] *= ratio
+        trans_ratio = [ratio * smooth_inc[i] + self.last_ratio * smooth_dec[i] for i in xrange(int(len_smooth_trans))]
+        left_channel[:int(len_smooth_trans)] *= trans_ratio
+        right_channel[:int(len_smooth_trans)] *= trans_ratio
+        left_channel[:int(len_smooth_trans)] = maximum(minimum(left_channel[:int(len_smooth_trans)], pow(2.0, 15) - 1), -pow(2.0, 15) + 1)
+        left_channel[:int(len_smooth_trans)] = maximum(minimum(left_channel[:int(len_smooth_trans)], pow(2.0, 15) - 1), -pow(2.0, 15) + 1)
+        left_channel[int(len_smooth_trans):] *= ratio
+        right_channel[int(len_smooth_trans):] *= ratio
         
         self.last_ratio = ratio
         

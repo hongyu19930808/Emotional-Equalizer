@@ -192,10 +192,12 @@ class fluid_synth_channel_info_t(Structure):
         ('name', c_char*32),
         ('reserved', c_char*32)]
 
+"""
 fluid_synth_get_channel_info = cfunc('fluid_synth_get_channel_info', c_int,
                                   ('synth', c_void_p, 1),
                                   ('chan', c_int, 1),
                                   ('info', POINTER(fluid_synth_channel_info_t), 1))
+"""
 
 fluid_synth_get_reverb_roomsize = cfunc('fluid_synth_get_reverb_roomsize', c_double,
                                     ('synth', c_void_p, 1))
@@ -216,6 +218,7 @@ fluid_synth_get_chorus_nr = cfunc('fluid_synth_get_chorus_nr', c_int,
 fluid_synth_get_chorus_level = cfunc('fluid_synth_get_chorus_level', c_double,
                                     ('synth', c_void_p, 1))
 
+"""
 fluid_synth_get_chorus_speed_Hz = cfunc('fluid_synth_get_chorus_speed_Hz', c_double,
                                     ('synth', c_void_p, 1))
 
@@ -225,6 +228,7 @@ fluid_synth_get_chorus_depth_ms = cfunc('fluid_synth_get_chorus_depth_ms', c_dou
 fluid_synth_get_chorus_type = cfunc('fluid_synth_get_chorus_type', c_int,
                                     ('synth', c_void_p, 1))
 
+
 fluid_synth_set_midi_router = cfunc('fluid_synth_set_midi_router', None,
                                ('synth', c_void_p, 1),
                                ('router', c_void_p, 1))
@@ -232,6 +236,7 @@ fluid_synth_set_midi_router = cfunc('fluid_synth_set_midi_router', None,
 fluid_synth_handle_midi_event = cfunc('fluid_synth_handle_midi_event', POINTER(c_int),
                                ('data', c_void_p, 1),
                                ('event', c_void_p, 1))
+"""
 
 # fluid sequencer
 new_fluid_sequencer2 = cfunc('new_fluid_sequencer2', c_void_p,

@@ -21,12 +21,7 @@ class Instrument:
             else:
                 print '0', '\t',            
             for mood in Mood.mood_strs:
-                if mood in instrument['Is']:
-                    print '2', '\t',
-                elif mood in instrument['Is Not']:
-                    print '0', '\t',
-                else:
-                    print '1', '\t',
+                print instrument[mood], '\t',
             print ''
 
     @staticmethod
@@ -93,7 +88,7 @@ class Instrument:
     @staticmethod
     def get_instruments(mood, seed):
         len_pick = 12
-        threshold = 49.5
+        threshold = 49.9
         scores = [{'index': i, 'score': 0} for i in range(len(Instrument.descriptions))]
         for i in xrange(len(Instrument.descriptions)):
             for mood_str in mood.keys():
@@ -536,5 +531,4 @@ class Instrument:
         
 if __name__ == '__main__':
     Instrument.init()
-    # Instrument.init_old_version()
-    # Instrument.output_name_remark()
+    Instrument.output_remark_mood()

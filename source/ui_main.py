@@ -126,7 +126,7 @@ class MainUI:
     
     def get_unit_offset(self):
         self.root.withdraw()
-        info_ui = InfoUI(self, self.root)
+        info_ui = InfoUI(self)
         unit = info_ui.get_unit()
         offset = info_ui.get_offset()
         self.root.update()
