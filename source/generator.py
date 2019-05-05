@@ -173,6 +173,9 @@ class Generator:
     def gen_pitch_parameter(mood, track_type):
         pitch = [0, 0, 1, 0, 0]
         abs_offset = {key: max(0, mood[key] / 25.0 - 2) for key in mood.keys()}
+        abs_offset['Scary'] /= 2.0
+        abs_offset['Mysterious'] /= 2.0
+        
         if track_type == 'melody':
             rules = {
                 0: {'+': [Mood.Angry], '-': [Mood.Comic, Mood.Happy, Mood.Romantic, Mood.Mysterious]},
@@ -338,12 +341,12 @@ class Generator:
         if (mood[Mood.Angry] > 50 or mood[Mood.Scary] > 50) and track_type == 'harmony':
             value = max(mood[Mood.Angry], mood[Mood.Scary])
             unit_param = [1.0, 2.0, 4.0, 6.0, 8.0]
-            unit = 1.0 / unit_param[(value - 50 - 1) / 10]
-            loudness = (value - 100) * (value - 100) / -50.0
+            unit = 1.0 / unit_param[(value - 50) / 17]
+            loudness = (value - 100) * (value - 100) / -25.0 - 25.0
             param['tremolo'] = (-1, unit, loudness)
         if (mood[Mood.Angry] > 50 or mood[Mood.Scary] > 50) and track_type == 'melody':
             value = max(mood[Mood.Angry], mood[Mood.Scary])
-            loudness = (value - 100) * (value - 100) / -25.0
+            loudness = (value - 100) * (value - 100) / -25.0 - 25.0
             param['parallel'] = (4.5, loudness)
         if mood[Mood.Comic] > 50 and track_type == 'melody':
             param['staccato'] = min(1, (150 - mood[Mood.Comic]) * (150 - mood[Mood.Comic]) * 0.0001)

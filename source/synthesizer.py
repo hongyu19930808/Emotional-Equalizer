@@ -18,6 +18,8 @@ class Synthesizer:
         self.right_right_tail = None
         self.digital_filter = {'b': [1], 'a': [1]}
         self.overdriven_coeff = 1.0
+        self.reverb_delay_time = 0
+        self.reverb_amount = 0       
         start_new_thread(self.init_background, ())
         (Synthesizer.ear_b, Synthesizer.ear_a) = Synthesizer.get_ear_filter()
         
@@ -50,7 +52,8 @@ class Synthesizer:
         self.digital_filter = {'b': [1], 'a': [1]}
         self.overdriven_coeff = 1.0
 
-    def convert_pattern_to_samples(self, pattern, instruments, unit, dynamic_offset = 0):        
+    def convert_pattern_to_samples(self, pattern, instruments, unit, dynamic_offset = 0):   
+
         while self.status == False:
             sleep(0.01)
         
@@ -149,7 +152,7 @@ class Synthesizer:
         
         # filter
         num_samples_mono = len(combined_samples) / 2
-        num_samples_tail = int(sampling_rate * 0.1)
+        num_samples_tail = int(sampling_rate * 0.5)
         reshaped_samples = combined_samples.reshape(num_samples_mono, 2)
         left_channel = array(list(reshaped_samples[:, 0]) + [0] * num_samples_tail)
         right_channel = array(list(reshaped_samples[:, 1]) + [0] * num_samples_tail)
@@ -160,6 +163,19 @@ class Synthesizer:
             right_channel = minimum(right_channel, max_amp * self.overdriven_coeff)
         left_channel = lfilter(digital_filter['b'], digital_filter['a'], left_channel)
         right_channel = lfilter(digital_filter['b'], digital_filter['a'], right_channel)
+        
+        num_samples = array_length + num_samples_tail
+        reverb_delay_samples = int(self.reverb_delay_time * sampling_rate)
+        current_reverb_coeff = self.reverb_amount
+        for i in xrange(5):
+            if reverb_delay_samples >= num_samples:
+                break
+            left_channel[reverb_delay_samples:] += \
+                (left_channel[:num_samples - reverb_delay_samples] * current_reverb_coeff)
+            right_channel[reverb_delay_samples:] += \
+                (right_channel[:num_samples - reverb_delay_samples] * current_reverb_coeff)
+            reverb_delay_samples *= 2
+            current_reverb_coeff *= current_reverb_coeff
         
         # calculate the perceptual volume
         frame_length = 1024
@@ -180,8 +196,6 @@ class Synthesizer:
         ratio = sqrt(pow(10, (desired_volume - original_volume) / 10.0))
         max_ratio = (pow(2.0, 15) - 1) / max(max(abs(left_channel)), max(abs(right_channel)))
         ratio = min(ratio, max_ratio)
-        #if ratio / self.last_ratio > 0.9 and ratio / self.last_ratio < 1.1:
-            #ratio = self.last_ratio
         
         # normalize the left channel and the right channel
         trans_ratio = [ratio * smooth_inc[i] + self.last_ratio * smooth_dec[i] for i in xrange(int(len_smooth_trans))]
@@ -207,6 +221,7 @@ class Synthesizer:
         # keep the filter tail
         self.left_channel_tail = array(left_channel[-num_samples_tail:])
         self.right_channel_tail = array(right_channel[-num_samples_tail:])
+        
         return raw_audio_string(combined_samples)
     
     @staticmethod

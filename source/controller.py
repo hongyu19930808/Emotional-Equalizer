@@ -10,6 +10,7 @@ from impromptu import Impromptu
 from random import randint
 from ui_equalizer import EqualizerUI
 from midi import NoteOffEvent
+from wave import open as waveopen
 
 class Controller:
     def __init__(self, gui):
@@ -115,6 +116,7 @@ class Controller:
         self.patterns = {}
         self.tonalities = {}
         self.instruments = {}
+        self.all_samples = {}
         self.removed_event = {}
         
         while True:
@@ -151,11 +153,13 @@ class Controller:
                     max(local_mood['Sad'], local_mood['Mysterious'], local_mood['Romantic'], local_mood['Calm'])
                 brightness_param /= 100.0;
                 self.synth.digital_filter = EqualizerUI.cal_spectral_tilt(brightness_param)
-                overdriven_param = max(local_mood['Angry'], local_mood['Scary'], 50) / 250.0 - 0.2
+                overdriven_param = max(local_mood['Angry'], local_mood['Scary'], 50) / 500.0 - 0.1
                 self.synth.overdriven_coeff = 1 - overdriven_param
-                
+                self.synth.reverb_amount = max(50, local_mood['Romantic'], local_mood['Mysterious'], (local_mood['Sad'] + 50) / 2) * 0.01 - 0.5
+                self.synth.reverb_delay_time = self.synth.reverb_amount / 10.0 + 0.025
                 samples = self.synth.convert_pattern_to_samples(
                     pattern, instruments, unit, dynamic_offset)
+                self.all_samples[next_index] = samples
                 
                 self.composition_mutex.acquire()
                 self.next_samples = samples
@@ -165,7 +169,21 @@ class Controller:
                 sleep(0.01)
         
         MIDI.write_patterns('demo.mid', self.patterns, unit, self.tonalities, self.instruments)
+        self.write_wave('demo.wav')
         self.compose_thread_mutex.release()
+        
+    def write_wave(self, path):
+        keys = self.all_samples.keys()
+        keys.sort()
+        wave_str = ''
+        for key in keys:
+            wave_str += self.all_samples[key]
+        fout = waveopen(path, 'w')
+        fout.setframerate(44100)
+        fout.setnchannels(2)
+        fout.setsampwidth(2)
+        fout.writeframes(wave_str)
+        fout.close()
     
     def play_samples(self):
         self.play_thread_mutex.acquire()
