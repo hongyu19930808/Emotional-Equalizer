@@ -14,9 +14,9 @@ class Gender:
     Male = 'male'
     Female = 'female'
 
-email = 'yhongag@connect.ust.hk'
-gender = Gender.Male
-age = 25
+email = 'gktam@connect.ust.hk'
+gender = Gender.Female
+age = 23
 
 
 
@@ -93,7 +93,6 @@ def read_samples(path):
     
 def play(excerpt_index):
     global all_excerpts, play_status
-    print 'playing:', str(excerpt_index), all_excerpts[excerpt_index]
     play_status = True
     path = os.path.join(os.path.expanduser('~'), 'Desktop', 'Test', 'excerpts', all_excerpts[excerpt_index])
     start_new_thread(play_excerpt, (path, ))
