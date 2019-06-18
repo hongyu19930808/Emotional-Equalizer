@@ -14,9 +14,10 @@ class Gender:
     Male = 'male'
     Female = 'female'
 
-email = 'gktam@connect.ust.hk'
-gender = Gender.Female
-age = 23
+email = 'qmuaa@connect.ust.hk'
+gender = Gender.Male
+age = 19
+
 
 
 
