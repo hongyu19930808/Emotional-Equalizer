@@ -104,3 +104,4 @@ source/tools/instruments_info_all.csv
 source/tools/instruments_meta_info.csv
 source/demo.mid
 midi/要下载的测试曲目.jpg
+source/tools/read_evaluation_results.py
