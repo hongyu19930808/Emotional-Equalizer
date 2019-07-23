@@ -95,8 +95,8 @@ def main():
                 details_quality[mood_actual][excerpt].append(int(row[9]) + 1)
                 excerpt_quality[excerpt].append(int(row[9]) + 1)
                 mood_quality[mood_actual].append(int(row[9]) + 1)
-                overall_quality.append(int(row[9]) + 1)    
-    
+                overall_quality.append(int(row[9]) + 1)
+                
     # draw figure
     figure = plt.figure(figsize = (10, 5))
     plt.title('Quality Distribution')
@@ -104,7 +104,8 @@ def main():
     x_value = ['1', '2', '3', '4', '5']
     y_value = count(overall_quality)
     plt.bar(x_value, y_value, figure = figure)
-    plt.show()
+    print y_value
+    # plt.show()
     
     for mood in moods:
         figure = plt.figure(figsize = (10, 5))
@@ -113,7 +114,7 @@ def main():
         x_value = ['1', '2', '3', '4', '5']
         y_value = count(mood_quality[mood])
         plt.bar(x_value, y_value, figure = figure)
-        plt.show()
+        # plt.show()
         
     for excerpt in excerpts.keys():
         figure = plt.figure(figsize = (10, 5))
@@ -122,7 +123,7 @@ def main():
         x_value = ['1', '2', '3', '4', '5']
         y_value = count(excerpt_quality[excerpt])
         plt.bar(x_value, y_value, figure = figure)
-        plt.show()    
+        # plt.show()    
     
     # process data
     for mood_pred in moods:
@@ -158,7 +159,7 @@ def main():
         upper_errs = [mood_distributions[mood_pred][mood_actual][1] for mood_pred in moods]
         yerr = [lower_errs, upper_errs]
         plt.bar(x_value, y_value, yerr = yerr, figure = figure)
-        plt.show()
+        # plt.show()
     
     figure = plt.figure(figsize = (10, 8))
     plt.title('Confusion Matrix')
@@ -180,7 +181,37 @@ def main():
     ax.set_xticklabels(x_label)
     im = ax.imshow(data, cmap=plt.cm.gray_r)
     plt.colorbar(im)
-    plt.show()
+    # plt.show()
+    
+    num_excerpts = 6
+    num_subjects = 17
+    num_moods = 8    
+    
+    figure = plt.figure(figsize = (10, 5))
+    plt.title('Mood Expression Degree')
+    plt.xlabel('Target Mood')
+    plt.ylabel('Probability')    
+    x_value = [mood.capitalize() for mood in moods] + ['Overall']
+    y_value = [data[i][i] for i in range(len(data))]
+    y_value.append(mean(y_value))
+    
+    # calculate confidence interval
+    lower_errs = []
+    upper_errs = []
+    for i in xrange(num_moods):
+        value = int(round(y_value[i] * num_excerpts * num_subjects))
+        samples = [1] * value + [0] * (num_excerpts * num_subjects - value)
+        [value, pos_err, neg_err, _, _] = get_confidence_interval_bern(samples)
+        lower_errs.append(neg_err)
+        upper_errs.append(pos_err)
+    value = int(round(y_value[num_moods] * num_excerpts * num_subjects * num_moods))
+    samples = [1] * value + [0] * (num_excerpts * num_subjects * num_moods - value)
+    [value, pos_err, neg_err, _, _] = get_confidence_interval_bern(samples)
+    lower_errs.append(neg_err)
+    upper_errs.append(pos_err)
+    yerr = [lower_errs, upper_errs]
+    plt.bar(x_value, y_value, yerr = yerr, figure = figure)
+    # plt.show()
     
     figure = plt.figure(figsize = (10, 5))
     plt.title('Quality Evaluation')
@@ -190,7 +221,9 @@ def main():
     yerr = [mood_quality[mood][1] for mood in moods] + [overall_quality[1]]
     plt.ylim(1, 5)
     plt.bar(x_value, y_value, yerr = yerr, figure = figure)
-    plt.show()
+    # plt.show()
+    for (x, y) in zip(x_value, y_value):
+        print x, y
     
     figure = plt.figure(figsize = (10, 5))
     plt.title('Quality Evaluation')
@@ -200,7 +233,9 @@ def main():
     yerr = [excerpt_quality[excerpt][1] for excerpt in excerpts.keys()] + [overall_quality[1]]
     plt.ylim(1, 5)
     plt.bar(x_value, y_value, yerr = yerr, figure = figure)
-    plt.show()  
+    # plt.show()  
+    for (x, y) in zip(x_value, y_value):
+        print x, y
     
 
 if __name__ == '__main__':
