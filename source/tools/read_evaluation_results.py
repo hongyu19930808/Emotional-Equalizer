@@ -104,25 +104,25 @@ def main():
     x_value = ['1', '2', '3', '4', '5']
     y_value = count(overall_quality)
     plt.bar(x_value, y_value, figure = figure)
+    plt.show()
     print y_value
-    # plt.show()
     
-    for mood in moods:
-        figure = plt.figure(figsize = (10, 5))
-        plt.title('Quality Distribution - ' + mood.capitalize())
-        plt.ylabel('Ratio')
-        x_value = ['1', '2', '3', '4', '5']
-        y_value = count(mood_quality[mood])
-        plt.bar(x_value, y_value, figure = figure)
+    # for mood in moods:
+        # figure = plt.figure(figsize = (10, 5))
+        # plt.title('Quality Distribution - ' + mood.capitalize())
+        # plt.ylabel('Ratio')
+        # x_value = ['1', '2', '3', '4', '5']
+        # y_value = count(mood_quality[mood])
+        # plt.bar(x_value, y_value, figure = figure)
         # plt.show()
         
-    for excerpt in excerpts.keys():
-        figure = plt.figure(figsize = (10, 5))
-        plt.title('Quality Distribution - ' + excerpt.capitalize())
-        plt.ylabel('Count')
-        x_value = ['1', '2', '3', '4', '5']
-        y_value = count(excerpt_quality[excerpt])
-        plt.bar(x_value, y_value, figure = figure)
+    # for excerpt in excerpts.keys():
+        # figure = plt.figure(figsize = (10, 5))
+        # plt.title('Quality Distribution - ' + excerpt.capitalize())
+        # plt.ylabel('Count')
+        # x_value = ['1', '2', '3', '4', '5']
+        # y_value = count(excerpt_quality[excerpt])
+        # plt.bar(x_value, y_value, figure = figure)
         # plt.show()    
     
     # process data
@@ -148,17 +148,17 @@ def main():
     
     
     # draw figure
-    for mood_actual in moods:
-        figure = plt.figure(figsize = (10, 5))
-        plt.title('Actual Mood: '+ mood_actual.capitalize())
-        plt.xlabel('Guessed Mood')
-        plt.ylabel('Probability')
-        x_value = moods
-        y_value = [mood_distributions[mood_pred][mood_actual][0] for mood_pred in moods]
-        lower_errs = [mood_distributions[mood_pred][mood_actual][2] for mood_pred in moods]
-        upper_errs = [mood_distributions[mood_pred][mood_actual][1] for mood_pred in moods]
-        yerr = [lower_errs, upper_errs]
-        plt.bar(x_value, y_value, yerr = yerr, figure = figure)
+    # for mood_actual in moods:
+        # figure = plt.figure(figsize = (10, 5))
+        # plt.title('Actual Mood: '+ mood_actual.capitalize())
+        # plt.xlabel('Guessed Mood')
+        # plt.ylabel('Probability')
+        # x_value = moods
+        # y_value = [mood_distributions[mood_pred][mood_actual][0] for mood_pred in moods]
+        # lower_errs = [mood_distributions[mood_pred][mood_actual][2] for mood_pred in moods]
+        # upper_errs = [mood_distributions[mood_pred][mood_actual][1] for mood_pred in moods]
+        # yerr = [lower_errs, upper_errs]
+        # plt.bar(x_value, y_value, yerr = yerr, figure = figure)
         # plt.show()
     
     figure = plt.figure(figsize = (10, 8))
@@ -181,7 +181,7 @@ def main():
     ax.set_xticklabels(x_label)
     im = ax.imshow(data, cmap=plt.cm.gray_r)
     plt.colorbar(im)
-    # plt.show()
+    plt.show()
     
     num_excerpts = 6
     num_subjects = 17
@@ -211,7 +211,7 @@ def main():
     upper_errs.append(pos_err)
     yerr = [lower_errs, upper_errs]
     plt.bar(x_value, y_value, yerr = yerr, figure = figure)
-    # plt.show()
+    plt.show()
     
     figure = plt.figure(figsize = (10, 5))
     plt.title('Quality Evaluation')
@@ -221,7 +221,7 @@ def main():
     yerr = [mood_quality[mood][1] for mood in moods] + [overall_quality[1]]
     plt.ylim(1, 5)
     plt.bar(x_value, y_value, yerr = yerr, figure = figure)
-    # plt.show()
+    plt.show()
     for (x, y) in zip(x_value, y_value):
         print x, y
     
@@ -233,7 +233,7 @@ def main():
     yerr = [excerpt_quality[excerpt][1] for excerpt in excerpts.keys()] + [overall_quality[1]]
     plt.ylim(1, 5)
     plt.bar(x_value, y_value, yerr = yerr, figure = figure)
-    # plt.show()  
+    plt.show()  
     for (x, y) in zip(x_value, y_value):
         print x, y
     
